@@ -2,8 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 #define PORT 1337
@@ -11,8 +13,11 @@
 void daemonize();
 int make_socket();
 void handler(int sock);
+int recvto_file(int sock, char *filename);
+char *read_file(char *filename, long *file_size);
+int write_file(char *filename, char *content, size_t size);
 void revstr(char *str);
-int fromhex(char *hex, unsigned char *bin, size_t bin_size);
+size_t hexs2bin(const char *hex, unsigned char **out);
 
 int decoder_file(int sock);
 int downloader_file(int sock);
@@ -79,6 +84,64 @@ void handler(int sock) {
     }
 }
 
+int recvto_file(int sock, char *filename) {
+    ssize_t buflen;
+    FILE *fp;
+    char buffer[1024];
+
+    fp = fopen(filename, "wb");
+    if (!fp) return -1;
+
+    while (1) {
+        buflen = recv(sock, buffer, sizeof(buffer), 0);
+        if (buflen <= 0) {
+            fclose(fp);
+            return -1;
+        };
+        fprintf(fp, "%s", buffer);
+        bzero(buffer, sizeof(buffer));
+    }
+    fclose(fp);
+
+    return 0;
+}
+
+char *read_file(char *filename, long *file_size) {
+    FILE *file = fopen(filename, "r");
+    if (file == NULL) {
+        return NULL;
+    }
+
+    fseek(file, 0, SEEK_END);
+    *file_size = ftell(file);
+    rewind(file);
+
+    char *buffer = (char *)malloc(*file_size + 1);
+    if (buffer == NULL) {
+        fclose(file);
+        return NULL;
+    }
+
+    size_t bytes_read = fread(buffer, 1, *file_size, file);
+    if (bytes_read != *file_size) {
+        free(buffer);
+        fclose(file);
+        return NULL;
+    }
+
+    buffer[bytes_read] = '\0';
+
+    fclose(file);
+    return buffer;
+}
+
+int write_file(char *filename, char *content, size_t size) {
+    FILE *fp = fopen(filename, "wb");
+    if (!fp) return -1;
+    fwrite(content, 1, size, fp);
+    fclose(fp);
+}
+
 void revstr(char *str) {
     if (!str) return;
     int i = 0;
@@ -92,19 +155,97 @@ void revstr(char *str) {
     }
 }
 
-int fromhex(char *hex, unsigned char *bin, size_t bin_size) {
-    size_t len = strlen(hex);
-    if (len % 2 != 0) return -1;
-    size_t i;
-    for (i = 0; i < len / 2; i++) {
-        if (sscanf(&hex[2 * i], "%2hhx", &bin[i]) != 1) return -1;
+// https://nachtimwald.com/2017/09/24/hex-encode-and-decode-in-c/#hex-to-binary
+int hexchr2bin(const char hex, char *out) {
+    if (out == NULL)
+        return 0;
+
+    if (hex >= '0' && hex <= '9') {
+        *out = hex - '0';
+    } else if (hex >= 'A' && hex <= 'F') {
+        *out = hex - 'A' + 10;
+    } else if (hex >= 'a' && hex <= 'f') {
+        *out = hex - 'a' + 10;
+    } else {
+        return 0;
     }
-    return i;
+
+    return 1;
+}
+
+size_t hexs2bin(const char *hex, unsigned char **out) {
+    size_t len;
+    char b1, b2;
+    size_t i;
+
+    if (hex == NULL || *hex == '\0' || out == NULL)
+        return 0;
+
+    len = strlen(hex);
+    if (len % 2 != 0)
+        return 0;
+    len /= 2;
+
+    *out = malloc(len + 1);
+    if (*out == NULL)
+        return 0;
+
+    for (i = 0; i < len; i++) {
+        if (!hexchr2bin(hex[i * 2], &b1) || !hexchr2bin(hex[i * 2 + 1], &b2)) {
+            free(*out);
+            *out = NULL;
+            return 0;
+        }
+        (*out)[i] = (b1 << 4) | b2;
+    }
+
+    (*out)[len] = '\0';
+
+    return len;
 }
 
 int decoder_file(int sock) {
+    printf("called decoder_file\n");
+    char *folder = "database";
+    struct stat st;
+    if (stat(folder, &st) == -1) {
+        if (mkdir(folder, 0700) == -1) return 1;
+    }
+
+    time_t timestamp = time(NULL);
+    char strtime[32];
+    char filename[128];
+
+    snprintf(strtime, sizeof(strtime), "%ld", timestamp);
+    snprintf(filename, sizeof(filename), "%s/%s.jpeg", folder, strtime);
+
+    if (recvto_file(sock, filename) < 0) {
+        perror("recv failed");
+        return -1;
+    };
+
+    long file_size;
+    char *file_content = read_file(filename, &file_size);
+    if (!file_content) return -1;
+
+    revstr(file_content);
+
+    unsigned char *decoded;
+
+    size_t decoded_size = hexs2bin(file_content, &decoded);
+    if (decoded_size < 0) {
+        free(file_content);
+        free(decoded);
+        return -1;
+    }
+
+    write_file(filename, decoded, decoded_size);
+
+    free(file_content);
+    free(decoded);
     return 0;
 }
+
 int downloader_file(int sock) {
     char *message = "File download initiated";
     send(sock, message, strlen(message), 0);
