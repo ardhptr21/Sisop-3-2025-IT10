@@ -13,7 +13,11 @@ void cleanline();
 int connect_socket();
 int main_menu();
 void handler(int sockfd, int opt);
+void battle(int sockfd);
+void health_bar(int min, int max);
 
+int recv_enemy(int sockfd, int should_new);
+int recv_attack(int sockfd, char *buffer);
 int get_stats(int sockfd);
 int get_inventory(int sockfd);
 int get_weapons(int sockfd);
@@ -83,12 +87,147 @@ void handler(int sockfd, int opt) {
             get_inventory(sockfd);
             break;
         case 4:
-            printf("TODO: Battle Mode\n");
+            battle(sockfd);
             break;
         default:
             printf("Invalid option. Please try again.\n");
     }
     printf("\n");
+}
+
+void health_bar(int min, int max) {
+    int barLength = 50;
+    int healthUnits = (min * barLength) / max;
+
+    printf("[");
+    for (int i = 0; i < barLength; i++) {
+        if (i < healthUnits) {
+            printf("\e[42m \e[0m");
+        } else {
+            printf("\e[107m \e[0m");
+        }
+    }
+    printf("] %d/%d HP\n\n", min, max);
+}
+
+void battle(int sockfd) {
+    char buffer[1024];
+    char input[64];
+
+    printf("==== BATTLE STARTED ====\n");
+
+    char *action = "battle\n";
+    int len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return;
+
+    recv_enemy(sockfd, 0);
+    printf("Type 'attack' to attack or 'exit' to leave battle\n");
+    while (1) {
+        printf("> ");
+        scanf("%s", input);
+
+        if (strcmp(input, "exit") == 0) {
+            char *action = "exit\n";
+            int len = strlen(action);
+            if (send(sockfd, action, len, 0) != len) return;
+            break;
+        }
+
+        if (strcmp(input, "attack") != 0) {
+            printf("Invalid command. Type 'attack' to attack or 'exit' to leave battle.\n");
+            continue;
+        }
+
+        char *action = "attack\n";
+        int len = strlen(action);
+        if (send(sockfd, action, len, 0) != len) return;
+
+        int buflen = recv(sockfd, buffer, sizeof(buffer), 0);
+        if (buflen <= 0) return;
+        buffer[buflen - 1] = '\0';
+
+        recv_attack(sockfd, buffer);
+    }
+}
+
+int recv_enemy(int sockfd, int should_new) {
+    char buffer[1024];
+
+    int buflen = recv(sockfd, buffer, sizeof(buffer), 0);
+    if (buflen <= 0) return -1;
+    buffer[buflen - 1] = '\0';
+
+    char *sep = strchr(buffer, '=');
+    if (!sep) return -1;
+    *sep = '\0';
+    char *key = buffer;
+    char *value = sep + 1;
+    int value_int = atoi(value);
+
+    if (should_new) {
+        printf("==== NEW ENEMY ====\n");
+    } else {
+        printf("Enemy appeared with:\n");
+    }
+
+    health_bar(value_int, value_int);
+    printf("\n");
+    return 0;
+}
+
+int recv_attack(int sockfd, char *buffer) {
+    char *token = strtok(buffer, ";");
+    int baseHealth = 0, currHealth = 0, reward = 0, damage = 0, isDead = 0, isCritical = 0, isPassive = 0;
+    char *passive = NULL, *passiveDetail = NULL;
+
+    while (token != NULL) {
+        char *sep = strchr(token, '=');
+        if (!sep) continue;
+        *sep = '\0';
+        char *key = token;
+        char *value = sep + 1;
+
+        if (strcmp(key, "BaseHealth") == 0) {
+            baseHealth = atoi(value);
+        } else if (strcmp(key, "CurrHealth") == 0) {
+            currHealth = atoi(value);
+            health_bar(currHealth, baseHealth);
+        } else if (strcmp(key, "Reward") == 0) {
+            reward = atoi(value);
+        } else if (strcmp(key, "Damage") == 0) {
+            damage = atoi(value);
+        } else if (strcmp(key, "IsDead") == 0) {
+            isDead = atoi(value);
+        } else if (strcmp(key, "IsCritical") == 0) {
+            isCritical = atoi(value);
+        } else if (strcmp(key, "IsPassive") == 0) {
+            isPassive = atoi(value);
+        } else if (strcmp(key, "Passive") == 0) {
+            passive = value;
+        } else if (strcmp(key, "PassiveDetail") == 0) {
+            passiveDetail = value;
+        }
+        token = strtok(NULL, ";");
+    }
+
+    if (isCritical) {
+        printf("==== CRITICAL HIT! ====\n");
+    }
+
+    if (isPassive) {
+        printf("==== PASSIVE ACTIVE: %s ====\n", passive);
+        printf("%s\n\n", passiveDetail);
+    }
+
+    if (isDead) {
+        printf("You dealt %d damage and defeated the enemy!\n\n", damage);
+        printf("==== REWARD ====\n");
+        printf("You earned %d gold!\n\n", reward);
+        recv_enemy(sockfd, 1);
+        return 0;
+    }
+
+    printf("You dealt %d damage!\n\n", damage);
 }
 
 int get_stats(int sockfd) {
