@@ -99,24 +99,23 @@ void handler(int sock) {
     int buflen;
     while (1) {
         buflen = recv(sock, buffer, sizeof(buffer), 0);
-        if (buflen <= 0) break;
+        if (buflen <= 0) continue;
         buffer[buflen - 1] = '\0';
-
-        if (strcmp(buffer, "exit") == 0) break;
+        if (strcmp(buffer, "exit") == 0) continue;
         if (strcmp(buffer, "stats") == 0) {
-            if (get_stats(sock, &player) < 0) break;
+            if (get_stats(sock, &player) < 0) continue;
         }
         if (strcmp(buffer, "inventory") == 0) {
-            if (get_inventory(sock, &player) < 0) break;
+            if (get_inventory(sock, &player) < 0) continue;
         }
         if (strcmp(buffer, "change") == 0) {
-            if (change_weapon(sock, &player) < 0) break;
+            if (change_weapon(sock, &player) < 0) continue;
         }
         if (strcmp(buffer, "weapons") == 0) {
-            if (available_weapons(sock) < 0) break;
+            if (available_weapons(sock) < 0) continue;
         }
         if (strcmp(buffer, "buy") == 0) {
-            if (buy_weapon(sock, &player) < 0) break;
+            if (buy_weapon(sock, &player) < 0) continue;
         }
     }
 
@@ -126,12 +125,13 @@ void handler(int sock) {
 int get_stats(int sock, struct Player *player) {
     char buffer[1024];
     snprintf(buffer, sizeof(buffer),
-             "GOLD=%d;KILLS=%d;WEAPON=%s;DMG=%d;PASSIVE=%s\n",
-             player->gold, player->kills,
+             "Gold=%d;Equipped Weapon=%s;Base Damage=%d;Kills=%d;Passive=%s;Passive Value=%d\n",
+             player->gold,
              player->inventory.weapons[player->equippedWeapon].name,
              player->inventory.weapons[player->equippedWeapon].damage,
-             WeaponPassiveStr[player->inventory.weapons[player->equippedWeapon].passiveType]);
-
+             player->kills,
+             WeaponPassiveStr[player->inventory.weapons[player->equippedWeapon].passiveType],
+             player->inventory.weapons[player->equippedWeapon].passivePercentage);
     int len = strlen(buffer);
     if (send(sock, buffer, len, 0) != len) return -1;
 }
@@ -142,12 +142,12 @@ int get_inventory(int sock, struct Player *player) {
     for (int i = 0; i < player->inventory.size; i++) {
         struct Weapon *weapon = &player->inventory.weapons[i];
         len += snprintf(buffer + len, sizeof(buffer) - len,
-                        "NAME=%s:PASSIVE=%s;",
+                        "Name=%s:Passive=%s:Equipped=%d:Passive Value=%d;",
                         weapon->name,
-                        WeaponPassiveStr[weapon->passiveType]);
+                        WeaponPassiveStr[weapon->passiveType],
+                        (player->equippedWeapon == i ? 1 : 0),
+                        weapon->passivePercentage);
     }
-    len += snprintf(buffer + len, sizeof(buffer) - len,
-                    "EQUIPPED=%d\n\n", player->equippedWeapon);
     buffer[len - 1] = '\0';
 
     if (send(sock, buffer, len, 0) != len) return -1;

@@ -3,35 +3,38 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <time.h>
 #include <unistd.h>
 
 #define HOST "127.0.0.1"
 #define PORT 1337
 
 int connect_socket();
+int main_menu();
 void handler(int sockfd, int opt);
 
-int main(int argc, char *argv[]) {
-    // int sockfd = connect_socket();
+int get_stats(int sockfd);
+int get_inventory(int sockfd);
+int get_weapons(int sockfd);
+int buy_weapon(int sockfd, int available);
+int change_weapon(int sockfd, int opt);
 
-    // if (sockfd < 0) {
-    //     perror("connection failed");
-    //     exit(EXIT_FAILURE);
-    // }
-    // printf("Connected to address %s:%d\n", HOST, PORT);
+int main(int argc, char *argv[]) {
+    int sockfd = connect_socket();
+
+    if (sockfd < 0) {
+        perror("connection failed");
+        exit(EXIT_FAILURE);
+    }
+    printf("Connected to address %s:%d\n", HOST, PORT);
 
     int opt;
-
     while (1) {
-        printf("1. Send input file to server\n");
-        printf("2. Download file from server\n");
-        printf("3. Exit\n");
-        printf(">>> ");
-        scanf("%d", &opt);
-        // handler(sockfd, opt);
+        opt = main_menu();
+        if (opt == 5) break;
+        handler(sockfd, opt);
     }
-
-    // close(sockfd);
+    close(sockfd);
     return 0;
 }
 
@@ -50,4 +53,273 @@ int connect_socket() {
     return sockfd;
 }
 
-void handler(int sockfd, int opt) {}
+int main_menu() {
+    int opt;
+    printf("1. Show Player Stats\n");
+    printf("2. Shop (Buy Weapons)\n");
+    printf("3. View Inventory & Equip Weapons\n");
+    printf("4. Battle Mode\n");
+    printf("5. Exit Game\n");
+    printf("Choose an option: ");
+    scanf("%d", &opt);
+    return opt;
+}
+
+void handler(int sockfd, int opt) {
+    switch (opt) {
+        case 1:
+            get_stats(sockfd);
+            break;
+        case 2:
+            get_weapons(sockfd);
+            break;
+        case 3:
+            get_inventory(sockfd);
+            break;
+        case 4:
+            printf("TODO: Battle Mode\n");
+            break;
+        default:
+            return;
+    }
+}
+
+int get_stats(int sockfd) {
+    char buffer[1024];
+
+    char *action = "stats\n";
+    int len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return -1;
+
+    int buflen = recv(sockfd, buffer, sizeof(buffer), 0);
+    if (buflen <= 0) return -1;
+    buffer[buflen - 1] = '\0';
+
+    printf("==== PLAYER STATS ====\n");
+
+    char *token = strtok(buffer, ";");
+    int hasPassive = 0, passiveValue = 0;
+    char *passive = NULL;
+
+    while (token != NULL) {
+        char *sep = strchr(token, '=');
+        if (!sep) continue;
+        *sep = '\0';
+        char *key = token;
+        char *value = sep + 1;
+        if (strcmp(key, "Gold") == 0) {
+            printf("| \e[33m%s\e[0m: %s | ", key, value);
+        } else if (strcmp(key, "Equipped Weapon") == 0) {
+            printf("\e[32m%s\e[0m: %s | ", key, value);
+        } else if (strcmp(key, "Base Damage") == 0) {
+            printf("\e[31m%s\e[0m: %s | ", key, value);
+        } else if (strcmp(key, "Kills") == 0) {
+            printf("\e[34m%s\e[0m: %s | ", key, value);
+        } else if (strcmp(key, "Passive") == 0) {
+            if (strcmp(value, "NONE") != 0) {
+                passive = value;
+                hasPassive = 1;
+            };
+        } else if (strcmp(key, "Passive Value") == 0) {
+            passiveValue = atoi(value);
+        }
+
+        token = strtok(NULL, ";");
+    }
+    if (hasPassive) {
+        printf("\e[35mPassive\e[0m: Increased %s Chance (%d%%) | ", passive, passiveValue);
+    }
+    printf("\n");
+}
+
+void display_inventory(char *buffer, int pos) {
+    int isEquipped = 0, hasPassive = 0, passiveValue = 0;
+    char *name = NULL, *passive = NULL;
+
+    char *start = buffer;
+    while (*start) {
+        char *end = strchr(start, ':');
+        if (end) *end = '\0';
+
+        char *sep = strchr(start, '=');
+        if (sep) {
+            *sep = '\0';
+            char *key = start;
+            char *value = sep + 1;
+
+            if (strcmp(key, "Name") == 0) {
+                name = value;
+            } else if (strcmp(key, "Equipped") == 0) {
+                isEquipped = atoi(value);
+            } else if (strcmp(key, "Passive") == 0) {
+                if (strcmp(value, "NONE") != 0) {
+                    passive = value;
+                    hasPassive = 1;
+                }
+            } else if (strcmp(key, "Passive Value") == 0) {
+                passiveValue = atoi(value);
+            }
+        }
+
+        if (end)
+            start = end + 1;
+        else
+            break;
+    }
+
+    if (isEquipped) {
+        if (hasPassive) {
+            printf("\e[32m[%d] %s\e[0m \e[35m(Passive: %d%% %s)\e[0m \e[33m(EQUIPPED)\e[0m\n", pos, name, passiveValue, passive);
+        } else {
+            printf("\e[32m[%d] %s\e[0m \e[33m(EQUIPPED)\e[0m\n", pos, name);
+        }
+    } else {
+        if (hasPassive) {
+            printf("[%d] %s (Passive: %d%% %s)\n", pos, name, passiveValue, passive);
+        } else {
+            printf("[%d] %s\n", pos, name);
+        }
+    }
+}
+int get_inventory(int sockfd) {
+    char buffer[1024];
+
+    char *action = "inventory\n";
+    int len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return -1;
+
+    int buflen = recv(sockfd, buffer, sizeof(buffer), 0);
+    if (buflen <= 0) return -1;
+    buffer[buflen - 1] = '\0';
+
+    printf("==== YOUR INVENTORY ====\n");
+
+    char *token = strtok(buffer, ";");
+    int pos = 1;
+    while (token != NULL) {
+        display_inventory(token, pos++);
+        token = strtok(NULL, ";");
+    }
+    printf("\n");
+
+    change_weapon(sockfd, pos - 1);
+}
+
+int display_weapon(char *buffer, int pos) {
+    int price = 0, damage = 0, hasPassive = 0, passiveValue = 0;
+    char *name = NULL, *passive = NULL;
+
+    char *start = buffer;
+    while (*start) {
+        char *end = strchr(start, ':');
+        if (end) *end = '\0';
+
+        char *sep = strchr(start, '=');
+        if (sep) {
+            *sep = '\0';
+            char *key = start;
+            char *value = sep + 1;
+
+            if (strcmp(key, "Name") == 0) {
+                name = value;
+            } else if (strcmp(key, "Price") == 0) {
+                price = atoi(value);
+            } else if (strcmp(key, "Damage") == 0) {
+                damage = atoi(value);
+            } else if (strcmp(key, "Passive") == 0) {
+                if (strcmp(value, "NONE") != 0) {
+                    passive = value;
+                    hasPassive = 1;
+                }
+            } else if (strcmp(key, "Passive Value") == 0) {
+                passiveValue = atoi(value);
+            }
+        }
+        if (end)
+            start = end + 1;
+        else
+            break;
+    }
+
+    if (hasPassive) {
+        printf("\e[32m[%d] %s\e[0m - Price: \e[33m%d gold\e[0m, Damage: \e[31m%d\e[0m \e[35m(Passive: %d%% %s)\e[0m\n", pos, name, price, damage, passiveValue, passive);
+    } else {
+        printf("\e[32m[%d] %s\e[0m - Price: \e[33m%d gold\e[0m, Damage: \e[31m%d\e[0m\n", pos, name, price, damage);
+    }
+
+    return 0;
+}
+int get_weapons(int sockfd) {
+    char buffer[1024];
+
+    char *action = "weapons\n";
+    int len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return -1;
+
+    int buflen = recv(sockfd, buffer, sizeof(buffer), 0);
+    if (buflen <= 0) return -1;
+    buffer[buflen - 1] = '\0';
+
+    printf("==== WEAPONS SHOP ====\n");
+
+    char *token = strtok(buffer, ";");
+    int pos = 1;
+    while (token != NULL) {
+        display_weapon(token, pos++);
+        token = strtok(NULL, ";");
+    }
+    printf("\n");
+    buy_weapon(sockfd, pos - 1);
+}
+
+int buy_weapon(int sockfd, int available) {
+    int opt;
+    printf("Enter weapon number to buy [1-%d] (0 to cancel): ", available);
+    scanf("%d", &opt);
+
+    if (opt < 0 || opt > available) {
+        printf("Invalid option. Please try again.\n");
+        return buy_weapon(sockfd, available);
+    }
+
+    if (opt == 0) return 0;
+
+    opt -= 1;
+
+    char action[32];
+    int len;
+
+    snprintf(action, sizeof(action), "buy\n");
+    len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return -1;
+    sleep(0.01);
+    snprintf(action, sizeof(action), "%d\n", opt);
+    len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return -1;
+}
+
+int change_weapon(int sockfd, int available) {
+    int opt;
+    printf("Enter weapon number to change [1-%d] (0 to cancel): ", available);
+    scanf("%d", &opt);
+
+    if (opt < 0 || opt > available) {
+        printf("Invalid option. Please try again.\n");
+        return change_weapon(sockfd, available);
+    }
+
+    if (opt == 0) return 0;
+
+    opt -= 1;
+
+    char action[32];
+    int len;
+
+    snprintf(action, sizeof(action), "change\n");
+    len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return -1;
+    sleep(0.01);
+    snprintf(action, sizeof(action), "%d\n", opt);
+    len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return -1;
+}

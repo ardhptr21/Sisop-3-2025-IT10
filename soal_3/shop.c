@@ -21,7 +21,7 @@ enum WeaponPassive {
 };
 
 const char *WeaponPassiveStr[] = {
-    "None",
+    "NONE",
     "Critical",
     "Instakill",
 };
@@ -50,21 +50,13 @@ int available_weapons(int sock) {
     int size = sizeof(weapons) / sizeof(weapons[0]);
     for (int i = 0; i < size; i++) {
         struct Weapon *weapon = &weapons[i];
-        if (i == size - 1) {
-            len += snprintf(buffer + len, sizeof(buffer) - len,
-                            "NAME=%s:PRICE=%d:DAMAGE=%d:PASSIVE=%s\n\n",
-                            weapon->name,
-                            weapon->price,
-                            weapon->damage,
-                            WeaponPassiveStr[weapon->passiveType]);
-            continue;
-        }
         len += snprintf(buffer + len, sizeof(buffer) - len,
-                        "NAME=%s:PRICE=%d:DAMAGE=%d:PASSIVE=%s;",
+                        "Name=%s:Price=%d:Damage=%d:Passive=%s:Passive Value=%d;",
                         weapon->name,
                         weapon->price,
                         weapon->damage,
-                        WeaponPassiveStr[weapon->passiveType]);
+                        WeaponPassiveStr[weapon->passiveType],
+                        weapon->passivePercentage);
     }
     buffer[len - 1] = '\0';
 
