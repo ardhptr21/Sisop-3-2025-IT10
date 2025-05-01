@@ -8,19 +8,36 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "shop.c"
 
 #define PORT 1337
 
+struct AttackStats {
+    int damage;
+    int reward;
+    int isCritical;
+    int isPassive;
+    int isDead;
+
+    const char *passive;
+    const char *passiveDetail;
+};
+
 int make_socket();
 void reap_zombies(int sig);
 void handler(int sock);
+void battle(int sock, struct Player *player);
 
 int get_stats(int sock, struct Player *player);
 int get_inventory(int sock, struct Player *player);
 int change_weapon(int sock, struct Player *player);
+
+int random_reward();
+int random_enemy(int sock, int *enemyHealth);
+int attack(int sock, struct Player *player, int *enemyHealth);
 
 int main(int argc, char *argv[]) {
     struct sigaction sa;
@@ -101,7 +118,7 @@ void handler(int sock) {
         buflen = recv(sock, buffer, sizeof(buffer), 0);
         if (buflen <= 0) continue;
         buffer[buflen - 1] = '\0';
-        if (strcmp(buffer, "exit") == 0) continue;
+        if (strcmp(buffer, "exit") == 0) break;
         if (strcmp(buffer, "stats") == 0) {
             if (get_stats(sock, &player) < 0) continue;
         }
@@ -116,6 +133,10 @@ void handler(int sock) {
         }
         if (strcmp(buffer, "buy") == 0) {
             if (buy_weapon(sock, &player) < 0) continue;
+        }
+        if (strcmp(buffer, "battle") == 0) {
+            battle(sock, &player);
+            continue;
         }
     }
 
@@ -168,4 +189,110 @@ int change_weapon(int sock, struct Player *player) {
     }
 
     player->equippedWeapon = index;
+}
+
+int random_enemy(int sock, int *enemyHealth) {
+    srand(time(NULL));
+    int randomValue = (rand() % 151) + 50;
+
+    *enemyHealth = randomValue;
+
+    char buffer[128];
+    snprintf(buffer, sizeof(buffer), "Health=%d", randomValue);
+    int len = strlen(buffer);
+    if (send(sock, buffer, len, 0) != len) return -1;
+}
+
+int random_reward() {
+    srand(time(NULL));
+    int randomValue = (rand() % 81) + 20;
+    return randomValue;
+}
+
+void battle(int sock, struct Player *player) {
+    char buffer[1024];
+    int buflen;
+
+    int enemyHealth;
+    random_enemy(sock, &enemyHealth);
+
+    while (1) {
+        buflen = recv(sock, buffer, sizeof(buffer), 0);
+        if (buflen <= 0) continue;
+        buffer[buflen - 1] = '\0';
+
+        if (strcmp(buffer, "exit") == 0) break;
+        if (strcmp(buffer, "attack") == 0) {
+            attack(sock, player, &enemyHealth);
+        }
+    }
+}
+
+int attack(int sock, struct Player *player, int *enemyHealth) {
+    srand(time(NULL));
+    struct AttackStats attackStats = {0, 0, 0, 0, 0, NULL, NULL};
+    struct Weapon *weapon = &player->inventory.weapons[player->equippedWeapon];
+    int baseDamage = weapon->damage;
+
+    attackStats.damage = baseDamage;
+    attackStats.reward = random_reward();
+
+    // 45% chance for critical hit
+    attackStats.isCritical = (rand() % 100) <= 45;
+    // 20% chance for passive
+    attackStats.isPassive = (rand() % 100) <= 20;
+
+    if (attackStats.isCritical) {
+        attackStats.damage *= 2;
+    }
+
+    if (attackStats.isPassive && weapon->hasPassive) {
+        attackStats.passive = WeaponPassiveStr[weapon->passiveType];
+        if (weapon->passiveType == CRITICAL) {
+            attackStats.isCritical = (rand() % 100) <= weapon->passivePercentage + 45;
+            if (attackStats.isCritical) {
+                attackStats.damage *= 2;
+                attackStats.passiveDetail = "Critical Passive active! You hit the enemy with a more critical hit chance!";
+            } else {
+                attackStats.passiveDetail = "Critical Passive active! Oh no, you missed, the chance is not in your favor!";
+            }
+        } else if (weapon->passiveType == INSTANTKILL) {
+            if (rand() % 100 <= weapon->passivePercentage) {
+                *enemyHealth = 0;
+                attackStats.passiveDetail = "Instant Kill Passive active! You killed the enemy instantly, no damage taken!";
+            } else {
+                attackStats.damage += (attackStats.damage * weapon->passivePercentage) / 100;
+                attackStats.passiveDetail = "Instant Kill Passive active! but not your lucky day, but your damage is increased!";
+            }
+        }
+    }
+
+    *enemyHealth -= attackStats.damage;
+    player->gold += attackStats.reward;
+
+    if (*enemyHealth <= 0) {
+        attackStats.isDead = 1;
+        player->gold += attackStats.reward;
+        *enemyHealth = 0;
+        player->kills++;
+    }
+
+    char buffer[1024];
+
+    snprintf(buffer, sizeof(buffer), "Health=%d;Reward=%d;Damage=%d;Reward=%d;IsDead=%d;IsCritical=%d;IsPassive=%d;Passive=%s;PassiveDetail=%s\n",
+             *enemyHealth,
+             attackStats.reward,
+             attackStats.damage,
+             attackStats.reward,
+             attackStats.isDead,
+             attackStats.isCritical,
+             attackStats.isPassive,
+             attackStats.passive == NULL ? "NONE" : attackStats.passive,
+             attackStats.passiveDetail == NULL ? "NONE" : attackStats.passiveDetail);
+
+    int len = strlen(buffer);
+    if (send(sock, buffer, len, 0) != len) return -1;
+    sleep(0.01);
+    if (attackStats.isDead) random_enemy(sock, enemyHealth);
+    return 0;
 }

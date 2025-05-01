@@ -17,13 +17,13 @@ struct Player {
 enum WeaponPassive {
     NONE,
     CRITICAL,
-    INSTAKILL,
+    INSTANTKILL,
 };
 
 const char *WeaponPassiveStr[] = {
     "NONE",
     "Critical",
-    "Instakill",
+    "Instant Kill",
 };
 
 struct Weapon {
@@ -41,7 +41,7 @@ struct Weapon weapons[5] = {
     {"Flint & Steel", 150, 25, 0, 0, NONE},
     {"Kitchen Knife", 200, 35, 0, 0, NONE},
     {"Staff of Light", 120, 20, 1, 10, CRITICAL},
-    {"Terra Blade", 50, 10, 1, 30, INSTAKILL},
+    {"Terra Blade", 50, 10, 1, 30, INSTANTKILL},
 };
 
 int available_weapons(int sock) {

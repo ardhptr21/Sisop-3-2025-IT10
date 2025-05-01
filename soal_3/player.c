@@ -9,6 +9,7 @@
 #define HOST "127.0.0.1"
 #define PORT 1337
 
+void cleanline();
 int connect_socket();
 int main_menu();
 void handler(int sockfd, int opt);
@@ -38,6 +39,10 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+void cleanline() {
+    while (getchar() != '\n');
+}
+
 int connect_socket() {
     int sockfd;
     struct sockaddr_in address;
@@ -62,6 +67,7 @@ int main_menu() {
     printf("5. Exit Game\n");
     printf("Choose an option: ");
     scanf("%d", &opt);
+    cleanline();
     return opt;
 }
 
@@ -80,8 +86,9 @@ void handler(int sockfd, int opt) {
             printf("TODO: Battle Mode\n");
             break;
         default:
-            return;
+            printf("Invalid option. Please try again.\n");
     }
+    printf("\n");
 }
 
 int get_stats(int sockfd) {
@@ -276,6 +283,7 @@ int buy_weapon(int sockfd, int available) {
     int opt;
     printf("Enter weapon number to buy [1-%d] (0 to cancel): ", available);
     scanf("%d", &opt);
+    cleanline();
 
     if (opt < 0 || opt > available) {
         printf("Invalid option. Please try again.\n");
@@ -302,6 +310,7 @@ int change_weapon(int sockfd, int available) {
     int opt;
     printf("Enter weapon number to change [1-%d] (0 to cancel): ", available);
     scanf("%d", &opt);
+    cleanline();
 
     if (opt < 0 || opt > available) {
         printf("Invalid option. Please try again.\n");
