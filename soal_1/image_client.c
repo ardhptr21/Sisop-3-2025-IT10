@@ -93,7 +93,7 @@ int handler(int sockfd, int opt) {
             if (size_len <= 0) break;
             size_buffer[size_len] = '\0';
 
-            if (strlen(size_len) > 10) {
+            if (strlen(size_buffer) > 10) {
                 printf("Server: %s\n\n", size_buffer);
                 break;
             }
@@ -167,11 +167,12 @@ int recvto_file(int sock, char *filename, size_t size) {
     FILE *fp;
     char buffer[1024];
     size_t total_received = 0;
+    int threshold = 100;
 
     fp = fopen(filename, "wb");
     if (!fp) return -1;
 
-    while (total_received < size) {
+    while (total_received < size - threshold) {
         size_t remaining = size - total_received;
         size_t to_recv = sizeof(buffer);
         if (remaining < to_recv) to_recv = remaining;

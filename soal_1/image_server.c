@@ -139,11 +139,12 @@ int recvto_file(int sock, char *filename, size_t size) {
     FILE *fp;
     char buffer[1024];
     size_t total_received = 0;
+    int threshold = 100;
 
     fp = fopen(filename, "wb");
     if (!fp) return -1;
 
-    while (total_received < size) {
+    while (total_received < size - threshold) {
         size_t remaining = size - total_received;
         size_t to_recv = sizeof(buffer);
         if (remaining < to_recv) to_recv = remaining;
@@ -154,7 +155,6 @@ int recvto_file(int sock, char *filename, size_t size) {
         } while (buflen == -1 && errno == EINTR);
 
         if (buflen <= 0) {
-            perror("error receiving file");
             fflush(fp);
             fclose(fp);
             return -1;
