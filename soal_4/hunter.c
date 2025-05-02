@@ -7,34 +7,37 @@ struct SystemData *system_data;
 int sys_id, hunter_id;
 char username[50];
 
-// Notifikasi dungeon setiap 3 detik (Soal K)
-void *notifikasi_dungeon(void *arg) {
-    while (1) {
-        if (system_data->num_dungeons == 0) {
-            sleep(3);
-            continue;
-        }
-        int idx = system_data->current_notification_index++ % system_data->num_dungeons;
-        struct Dungeon d = system_data->dungeons[idx];
-        if (this_hunter->level >= d.min_level) {
-            printf("[NOTIF] Dungeon tersedia: %s (Level %d+)\n", d.name, d.min_level);
-        }
-        sleep(3);
+// Fungsi untuk menampilkan notifikasi dungeon
+void show_notifications() {
+    if (system_data->num_dungeons == 0) {
+        printf("[NOTIF] Tidak ada dungeon tersedia.\n");
+        return;
+    }
+
+    int idx = system_data->current_notification_index % system_data->num_dungeons;
+    struct Dungeon d = system_data->dungeons[idx];
+    if (this_hunter->level >= d.min_level) {
+        printf("[NOTIF] Dungeon tersedia: %s (Level %d+)\n", d.name, d.min_level);
     }
 }
 
+// Fungsi print_menu yang menampilkan notifikasi di bagian atas
 void print_menu() {
+    // Tampilkan notifikasi di atas menu
+    show_notifications();
+
+    // Menampilkan menu utama
     printf("\n=== '%s' MENU ===\n", username);
     printf("1. Dungeon List\n");
     printf("2. Dungeon Raid\n");
     printf("3. Hunter Battle\n");
-    printf("4. Notification\n");
-    printf("5. Exit\n");
+    printf("4. Notification\n");  // Opsi 4: Notification
+    printf("5. Exit\n");         // Exit dipindah ke pilihan 5
     printf("Choice: ");
 }
 
 void dungeon_list() {
-    printf("=== AVAILABLE DUNGEONS ===\n");     //Soal F
+    printf("=== AVAILABLE DUNGEONS ===\n");
     int found = 0;
     for (int i = 0; i < system_data->num_dungeons; i++) {
         if (this_hunter->level >= system_data->dungeons[i].min_level) {
@@ -141,7 +144,6 @@ int main() {
 
     int choice;
     while (1) {
-        // Soal B (Menu buat Hunter)
         printf("\n=== HUNTER MENU ===\n");
         printf("1. Register\n");
         printf("2. Login\n");
@@ -149,14 +151,12 @@ int main() {
         printf("Choice: ");
         scanf("%d", &choice);
 
-        // Clear the input buffer
         while (getchar() != '\n');
 
         if (choice == 1) {
-            // Register new hunter
             printf("Masukkan username: ");
             scanf("%s", username);
-            while (getchar() != '\n'); // Clear the buffer
+            while (getchar() != '\n');
 
             int idx = -1;
             for (int i = 0; i < system_data->num_hunters; i++) {
@@ -185,15 +185,14 @@ int main() {
                 memcpy(this_hunter, &system_data->hunters[idx], sizeof(struct Hunter));
                 printf("Registrasi sukses!\n");
 
-                break;  // Exit the loop to proceed with the system menu
+                break;
             } else {
-                printf("Username sudah terdaftar.\n");
+                printf("Username sudah terdaftar.\n"); 
             }
         } else if (choice == 2) {
-            // Login existing hunter
             printf("Masukkan username: ");
             scanf("%s", username);
-            while (getchar() != '\n'); // Clear the buffer
+            while (getchar() != '\n');
 
             int idx = -1;
             for (int i = 0; i < system_data->num_hunters; i++) {
@@ -215,10 +214,9 @@ int main() {
                 this_hunter = shmat(hunter_id, NULL, 0);
                 printf("Login sukses!\n");
 
-                break;  // Exit the loop to proceed with the system menu
+                break;
             }
         } else if (choice == 3) {
-            // Exit the program
             printf("Exiting...\n");
             shmdt(system_data);
             return 0;
@@ -229,9 +227,6 @@ int main() {
 
     printf("\n=== HUNTER SYSTEM ===\n");
 
-    pthread_t tid;
-    pthread_create(&tid, NULL, notifikasi_dungeon, NULL);
-
     int cmd;
     while (1) {
         print_menu();
@@ -239,6 +234,10 @@ int main() {
         if (cmd == 1) dungeon_list();              
         else if (cmd == 2) dungeon_raid();         
         else if (cmd == 3) hunter_battle();        
+        else if (cmd == 4) {
+            printf("=== MANUAL NOTIFICATION ===\n");
+            show_notifications();
+        }
         else if (cmd == 5) break;
     }
 
