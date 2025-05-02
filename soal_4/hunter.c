@@ -191,7 +191,7 @@ void sigint_handler(int sig) {
 int main() {
     signal(SIGINT, sigint_handler);
     key_t sys_key = get_system_key();
-    sys_id = shmget(sys_key, sizeof(struct SystemData), IPC_CREAT | 0666);
+    sys_id = shmget(sys_key, sizeof(struct SystemData), 0666);
     if (sys_id < 0) {
         printf("System belum aktif.\n");
         return 1;
