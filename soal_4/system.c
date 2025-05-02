@@ -11,7 +11,7 @@ void tampilkan_semua_hunter() {
     for (int i = 0; i < system_data->num_hunters; i++) {
         struct Hunter h = system_data->hunters[i];
         printf("Username: %s | Lv: %d | EXP: %d | ATK: %d | HP: %d | DEF: %d | Status: %s\n",
-            h.username, h.level, h.exp, h.atk, h.hp, h.def, h.banned ? "Banned" : "Active");
+               h.username, h.level, h.exp, h.atk, h.hp, h.def, h.banned ? "Banned" : "Active");
     }
 }
 
@@ -214,18 +214,19 @@ int main() {
         printf("3. Generate Dungeon\n");
         printf("4. Ban Hunter\n");
         printf("5. Reset Hunter\n");
-        printf("6. Exit\n");
+        printf("6. Exit\n");  
         printf("Choice: ");
 
         scanf("%d", &cmd);
-        if (cmd == 1) tampilkan_semua_hunter();         // SOAL 
+        if (cmd == 1) tampilkan_semua_hunter();         // SOAL B
         else if (cmd == 3) generate_dungeon();          // Soal D
         else if (cmd == 2) tampilkan_semua_dungeon();   // Soal E
-        else if (cmd == 4) duel();
-        else if (cmd == 5) ban_hunter();
-        else if (cmd == 6) reset_hunter();
-        else if (cmd == 7) unban_hunter();              // SOAL D
-        else if (cmd == 99) raise(SIGINT);
+        else if (cmd == 4) duel();                      // Soal G
+        else if (cmd == 5) ban_hunter();                // Soal H
+        else if (cmd == 6) {
+            sigint_handler(0);  
+            break;
+        }
     }
 
     return 0;
