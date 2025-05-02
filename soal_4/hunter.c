@@ -34,7 +34,7 @@ void print_menu() {
 }
 
 void dungeon_list() {
-    printf("=== AVAILABLE DUNGEONS ===\n");
+    printf("=== AVAILABLE DUNGEONS ===\n");     //Soal F
     int found = 0;
     for (int i = 0; i < system_data->num_dungeons; i++) {
         if (this_hunter->level >= system_data->dungeons[i].min_level) {
@@ -141,7 +141,7 @@ int main() {
 
     int choice;
     while (1) {
-        // Show main menu
+        // Soal B (Menu buat Hunter)
         printf("\n=== HUNTER MENU ===\n");
         printf("1. Register\n");
         printf("2. Login\n");
@@ -236,9 +236,9 @@ int main() {
     while (1) {
         print_menu();
         scanf("%d", &cmd);
-        if (cmd == 1) dungeon_list();              // SOAL E
-        else if (cmd == 2) dungeon_raid();         // SOAL F
-        else if (cmd == 3) hunter_battle();        // SOAL G
+        if (cmd == 1) dungeon_list();              
+        else if (cmd == 2) dungeon_raid();         
+        else if (cmd == 3) hunter_battle();        
         else if (cmd == 5) break;
     }
 

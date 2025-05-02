@@ -15,7 +15,7 @@ void tampilkan_semua_hunter() {
     }
 }
 
-// SOAL C: Generate Dungeon
+// SOAL D: Generate Dungeon
 void generate_dungeon() {
     if (system_data->num_dungeons >= MAX_DUNGEONS) {
         printf("Jumlah dungeon maksimal tercapai!\n");
@@ -208,7 +208,7 @@ int main() {
 
     int cmd;
     while (1) {
-        printf("== SYSTEM MENU ==\n");
+        printf("== SYSTEM MENU ==\n");  // Soal C (Menu memantau Hunter)
         printf("1. Hunter Info\n");
         printf("2. Dungeon Info\n");
         printf("3. Generate Dungeon\n");
@@ -218,9 +218,9 @@ int main() {
         printf("Choice: ");
 
         scanf("%d", &cmd);
-        if (cmd == 1) tampilkan_semua_hunter();         // SOAL B
-        else if (cmd == 3) generate_dungeon();          // SOAL C
-        else if (cmd == 2) tampilkan_semua_dungeon();
+        if (cmd == 1) tampilkan_semua_hunter();         // SOAL 
+        else if (cmd == 3) generate_dungeon();          // Soal D
+        else if (cmd == 2) tampilkan_semua_dungeon();   // Soal E
         else if (cmd == 4) duel();
         else if (cmd == 5) ban_hunter();
         else if (cmd == 6) reset_hunter();
