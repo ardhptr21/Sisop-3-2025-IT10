@@ -1,38 +1,79 @@
 #include "shm_common.h"
-#include <pthread.h>
 #include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <signal.h>
+#include <sys/select.h>
 
 struct Hunter *this_hunter;
 struct SystemData *system_data;
 int sys_id, hunter_id;
 char username[50];
 
-// Fungsi untuk menampilkan notifikasi dungeon
-void show_notifications() {
-    if (system_data->num_dungeons == 0) {
-        printf("[NOTIF] Tidak ada dungeon tersedia.\n");
-        return;
-    }
+// Fungsi untuk membersihkan buffer input
+void clear_input_buffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
 
-    int idx = system_data->current_notification_index % system_data->num_dungeons;
-    struct Dungeon d = system_data->dungeons[idx];
-    if (this_hunter->level >= d.min_level) {
-        printf("[NOTIF] Dungeon tersedia: %s (Level %d+)\n", d.name, d.min_level);
+// Fungsi untuk mengecek apakah tombol Enter ditekan
+int is_enter_pressed() {
+    struct timeval tv;
+    fd_set fds;
+    tv.tv_sec = 0;
+    tv.tv_usec = 0;
+    FD_ZERO(&fds);
+    FD_SET(STDIN_FILENO, &fds);
+    select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv);
+    return FD_ISSET(STDIN_FILENO, &fds);
+}
+
+// Fungsi untuk menampilkan satu dungeon
+void show_single_notification(int index) {
+    if (index >= system_data->num_dungeons || index < 0) return;
+
+    struct Dungeon d = system_data->dungeons[index];
+    printf("\n[NOTIF] Dungeon tersedia: %s (Level %d+)\n", d.name, d.min_level);
+}
+
+// Fungsi untuk menjalankan notifikasi secara bergantian setiap 3 detik
+void run_notification_loop() {
+    int index = 0;
+    int stop = 0;
+
+    printf("Menampilkan notifikasi dungeon...\n");
+
+    while (!stop) {
+        if (system_data->num_dungeons == 0) {
+            printf("[NOTIF] Tidak ada dungeon tersedia.\n");
+            sleep(3);
+            continue;
+        }
+
+        show_single_notification(index);
+        index = (index + 1) % system_data->num_dungeons;
+
+        // Tunggu 3 detik atau sampai Enter ditekan
+        for (int i = 0; i < 3; i++) {
+            sleep(1);
+            if (is_enter_pressed()) {
+                printf("Keluar dari notifikasi.\n");
+                stop = 1;
+                break;
+            }
+        }
     }
 }
 
-// Fungsi print_menu yang menampilkan notifikasi di bagian atas
+// Fungsi print_menu tanpa notifikasi otomatis
 void print_menu() {
-    // Tampilkan notifikasi di atas menu
-    show_notifications();
-
-    // Menampilkan menu utama
     printf("\n=== '%s' MENU ===\n", username);
     printf("1. Dungeon List\n");
     printf("2. Dungeon Raid\n");
     printf("3. Hunter Battle\n");
     printf("4. Notification\n");  // Opsi 4: Notification
-    printf("5. Exit\n");         // Exit dipindah ke pilihan 5
+    printf("5. Exit\n");
     printf("Choice: ");
 }
 
@@ -55,6 +96,7 @@ void dungeon_raid() {
     printf("Choose Dungeon: ");
     int choice;
     scanf("%d", &choice);
+    clear_input_buffer();
     choice -= 1;
 
     if (choice >= 0 && choice < system_data->num_dungeons &&
@@ -76,6 +118,9 @@ void dungeon_raid() {
         }
         system_data->num_dungeons--;
 
+        // Pastikan indeks notifikasi tetap valid
+        system_data->current_notification_index %= system_data->num_dungeons;
+
         shmctl(shmget(d.shm_key, sizeof(struct Dungeon), 0666), IPC_RMID, NULL);
 
         printf("\nRaid Success! Gained:\n");
@@ -92,6 +137,7 @@ void hunter_battle() {
     char enemy[50];
     printf("Enter enemy hunter username: ");
     scanf("%s", enemy);
+    clear_input_buffer();
 
     int enemy_idx = -1;
     for (int i = 0; i < system_data->num_hunters; i++) {
@@ -113,28 +159,39 @@ void hunter_battle() {
         return;
     }
 
-    int my_total = this_hunter->atk + this_hunter->hp + this_hunter->def;
-    int enemy_total = target->atk + target->hp + target->def;
+    // Serangan selalu sukses dalam satu kali serangan
+    printf("You won the battle!\n");
+    this_hunter->atk += target->atk;
+    this_hunter->hp += target->hp;
+    this_hunter->def += target->def;
 
-    if (my_total >= enemy_total) {
-        printf("You won the battle!\n");
-        this_hunter->atk += target->atk;
-        this_hunter->hp += target->hp;
-        this_hunter->def += target->def;
-
-        shmctl(shmget(target->shm_key, sizeof(struct Hunter), 0666), IPC_RMID, NULL);
-        for (int i = enemy_idx; i < system_data->num_hunters - 1; i++) {
-            system_data->hunters[i] = system_data->hunters[i + 1];
-        }
-        system_data->num_hunters--;
-    } else {
-        printf("You lost the battle.\n");
+    shmctl(shmget(target->shm_key, sizeof(struct Hunter), 0666), IPC_RMID, NULL);
+    for (int i = enemy_idx; i < system_data->num_hunters - 1; i++) {
+        system_data->hunters[i] = system_data->hunters[i + 1];
     }
+    system_data->num_hunters--;
+}
+
+void sigint_handler(int sig) {
+    printf("\nSystem shutting down...\n");
+
+    for (int i = 0; i < system_data->num_hunters; i++) {
+        shmctl(shmget(system_data->hunters[i].shm_key, sizeof(struct Hunter), 0666), IPC_RMID, NULL);
+    }
+    for (int i = 0; i < system_data->num_dungeons; i++) {
+        shmctl(shmget(system_data->dungeons[i].shm_key, sizeof(struct Dungeon), 0666), IPC_RMID, NULL);
+    }
+
+    shmdt(system_data);
+    shmctl(sys_id, IPC_RMID, NULL);
+    printf("Semua shared memory telah dihapus.\n");
+    exit(0);
 }
 
 int main() {
+    signal(SIGINT, sigint_handler);
     key_t sys_key = get_system_key();
-    sys_id = shmget(sys_key, sizeof(struct SystemData), 0666);
+    sys_id = shmget(sys_key, sizeof(struct SystemData), IPC_CREAT | 0666);
     if (sys_id < 0) {
         printf("System belum aktif.\n");
         return 1;
@@ -150,13 +207,12 @@ int main() {
         printf("3. Exit\n");
         printf("Choice: ");
         scanf("%d", &choice);
-
-        while (getchar() != '\n');
+        clear_input_buffer();
 
         if (choice == 1) {
             printf("Masukkan username: ");
             scanf("%s", username);
-            while (getchar() != '\n');
+            clear_input_buffer();
 
             int idx = -1;
             for (int i = 0; i < system_data->num_hunters; i++) {
@@ -192,7 +248,7 @@ int main() {
         } else if (choice == 2) {
             printf("Masukkan username: ");
             scanf("%s", username);
-            while (getchar() != '\n');
+            clear_input_buffer();
 
             int idx = -1;
             for (int i = 0; i < system_data->num_hunters; i++) {
@@ -217,9 +273,8 @@ int main() {
                 break;
             }
         } else if (choice == 3) {
-            printf("Exiting...\n");
-            shmdt(system_data);
-            return 0;
+            sigint_handler(0);  // Membersihkan dan keluar
+            break;
         } else {
             printf("Invalid choice. Please try again.\n");
         }
@@ -231,13 +286,11 @@ int main() {
     while (1) {
         print_menu();
         scanf("%d", &cmd);
+        clear_input_buffer();
         if (cmd == 1) dungeon_list();              
         else if (cmd == 2) dungeon_raid();         
         else if (cmd == 3) hunter_battle();        
-        else if (cmd == 4) {
-            printf("=== MANUAL NOTIFICATION ===\n");
-            show_notifications();
-        }
+        else if (cmd == 4) run_notification_loop(); 
         else if (cmd == 5) break;
     }
 
