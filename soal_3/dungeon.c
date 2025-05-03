@@ -201,7 +201,6 @@ int random_enemy(int sock, int *enemyHealth) {
     int randomValue = (rand() % 151) + 50;
 
     *enemyHealth = randomValue;
-
     char buffer[128];
     snprintf(buffer, sizeof(buffer), "Health=%d", randomValue);
     int len = strlen(buffer);
@@ -249,16 +248,13 @@ int attack(int sock, struct Player *player, struct Enemy *enemy) {
     // 20% chance for passive
     attackStats.isPassive = (rand() % 100) <= 20;
 
-    if (attackStats.isCritical) {
-        attackStats.damage *= 2;
-    }
-
     if (attackStats.isPassive && weapon->hasPassive) {
         attackStats.passive = WeaponPassiveStr[weapon->passiveType];
         if (weapon->passiveType == CRITICAL) {
-            attackStats.isCritical = (rand() % 100) <= weapon->passivePercentage + 45;
+            if (!attackStats.isCritical) {
+                attackStats.isCritical = (rand() % 100) <= weapon->passivePercentage + 45;
+            }
             if (attackStats.isCritical) {
-                attackStats.damage *= 2;
                 attackStats.passiveDetail = "Critical Passive active! You hit the enemy with a more critical hit chance!";
             } else {
                 attackStats.passiveDetail = "Critical Passive active! Oh no, you missed, the chance is not in your favor!";
@@ -267,7 +263,7 @@ int attack(int sock, struct Player *player, struct Enemy *enemy) {
             if (rand() % 100 <= weapon->passivePercentage) {
                 enemy->currentHealth = 0;
                 attackStats.passiveDetail = "Instant Kill Passive active! You killed the enemy instantly, no damage taken!";
-                attackStats.damage = 99999999999;
+                attackStats.damage = 0;
             } else {
                 attackStats.damage += (attackStats.damage * weapon->passivePercentage) / 100;
                 attackStats.passiveDetail = "Instant Kill Passive active! but not your lucky day, but your damage is increased!";
@@ -275,6 +271,10 @@ int attack(int sock, struct Player *player, struct Enemy *enemy) {
         }
     } else {
         attackStats.isPassive = 0;
+    }
+
+    if (attackStats.isCritical) {
+        attackStats.damage *= 2;
     }
 
     enemy->currentHealth -= attackStats.damage;

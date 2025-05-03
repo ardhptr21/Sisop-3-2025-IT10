@@ -69,7 +69,7 @@ int main_menu() {
     printf("3. View Inventory & Equip Weapons\n");
     printf("4. Battle Mode\n");
     printf("5. Exit Game\n");
-    printf("Choose an option: ");
+    printf("\e[33mChoose an option: \e[0m");
     scanf("%d", &opt);
     cleanline();
     return opt;
@@ -90,7 +90,7 @@ void handler(int sockfd, int opt) {
             battle(sockfd);
             break;
         default:
-            printf("Invalid option. Please try again.\n");
+            printf("\e[31mInvalid option. Please try again.\e[0m\n");
     }
     printf("\n");
 }
@@ -114,14 +114,14 @@ void battle(int sockfd) {
     char buffer[1024];
     char input[64];
 
-    printf("==== BATTLE STARTED ====\n");
+    printf("\e[31m==== BATTLE STARTED ====\e[0m\n\n");
 
     char *action = "battle\n";
     int len = strlen(action);
     if (send(sockfd, action, len, 0) != len) return;
 
     recv_enemy(sockfd, 0);
-    printf("Type 'attack' to attack or 'exit' to leave battle\n");
+    printf("Type \e[32m'attack'\e[0m to attack or \e[31m'exit'\e[0m to leave battle\n");
     while (1) {
         printf("> ");
         scanf("%s", input);
@@ -134,7 +134,7 @@ void battle(int sockfd) {
         }
 
         if (strcmp(input, "attack") != 0) {
-            printf("Invalid command. Type 'attack' to attack or 'exit' to leave battle.\n");
+            printf("Invalid command. Type \e[32m'attack'\e[0m to attack or \e[31m'exit'\e[0m to leave battle.\n\n");
             continue;
         }
 
@@ -151,12 +151,11 @@ void battle(int sockfd) {
 }
 
 int recv_enemy(int sockfd, int should_new) {
-    char buffer[1024];
+    char buffer[128];
 
     int buflen = recv(sockfd, buffer, sizeof(buffer), 0);
     if (buflen <= 0) return -1;
-    buffer[buflen - 1] = '\0';
-
+    buffer[buflen] = '\0';
     char *sep = strchr(buffer, '=');
     if (!sep) return -1;
     *sep = '\0';
@@ -165,7 +164,7 @@ int recv_enemy(int sockfd, int should_new) {
     int value_int = atoi(value);
 
     if (should_new) {
-        printf("==== NEW ENEMY ====\n");
+        printf("\e[34m==== NEW ENEMY ====\e[0m\n");
     } else {
         printf("Enemy appeared with:\n");
     }
@@ -191,7 +190,6 @@ int recv_attack(int sockfd, char *buffer) {
             baseHealth = atoi(value);
         } else if (strcmp(key, "CurrHealth") == 0) {
             currHealth = atoi(value);
-            health_bar(currHealth, baseHealth);
         } else if (strcmp(key, "Reward") == 0) {
             reward = atoi(value);
         } else if (strcmp(key, "Damage") == 0) {
@@ -210,24 +208,31 @@ int recv_attack(int sockfd, char *buffer) {
         token = strtok(NULL, ";");
     }
 
-    if (isCritical) {
-        printf("==== CRITICAL HIT! ====\n");
-    }
-
     if (isPassive) {
-        printf("==== PASSIVE ACTIVE: %s ====\n", passive);
+        printf("\e[35m==== PASSIVE ACTIVE: %s ====\e[0m\n", passive);
         printf("%s\n\n", passiveDetail);
     }
 
+    if (isCritical) {
+        printf("\e[33m==== CRITICAL HIT! ====\e[0m\n");
+    }
+
     if (isDead) {
-        printf("You dealt %d damage and defeated the enemy!\n\n", damage);
-        printf("==== REWARD ====\n");
-        printf("You earned %d gold!\n\n", reward);
+        if (damage > 0) {
+            printf("You dealt \e[31m%d damage\e[0m and defeated the enemy!\n\n", damage);
+        } else {
+            printf("You dealt \e[31m∞ damage\e[0m and defeated the enemy!\n\n");
+        }
+        printf("\e[35m==== REWARD ====\e[0m\n");
+        printf("You earned \e[33m%d gold\e[0m!\n\n", reward);
         recv_enemy(sockfd, 1);
         return 0;
     }
 
-    printf("You dealt %d damage!\n\n", damage);
+    printf("You dealt \e[31m%d\e[0m damage!\n\n", damage);
+
+    printf("\e[34m==== ENEMY STATUS ====\e[0m\n");
+    health_bar(currHealth, baseHealth);
 }
 
 int get_stats(int sockfd) {
