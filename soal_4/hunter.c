@@ -268,18 +268,18 @@ void hunter_battle() {
 }
 
 void sigint_handler(int sig) {
-    printf("\nSystem shutting down...\n");
+    printf("\nExiting hunter process...\n");
 
-    for (int i = 0; i < system_data->num_hunters; i++) {
-        shmctl(shmget(system_data->hunters[i].shm_key, sizeof(struct Hunter), 0666), IPC_RMID, NULL);
-    }
-    for (int i = 0; i < system_data->num_dungeons; i++) {
-        shmctl(shmget(system_data->dungeons[i].shm_key, sizeof(struct Dungeon), 0666), IPC_RMID, NULL);
+    // Detach shared memory yang digunakan hunter
+    if (this_hunter != (void *)-1) {
+        shmdt(this_hunter);
     }
 
-    shmdt(system_data);
-    shmctl(sys_id, IPC_RMID, NULL);
-    printf("Semua shared memory telah dihapus.\n");
+    if (system_data != (void *)-1) {
+        shmdt(system_data);
+    }
+
+    // Tidak menghapus shared memory (IPC_RMID) karena hanya system.c yang boleh
     exit(0);
 }
 
