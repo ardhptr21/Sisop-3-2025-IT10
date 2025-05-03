@@ -20,14 +20,16 @@ typedef struct {
 
 //membaca file csv ke shared memory
 int read_csv(char *filename, Order *orders) {
-  pid_t pid = fork();
-  if (pid == 0) {
-    char *args[] = {"curl", "-o", "Soal_2/delivery_order.csv", "https://drive.usercontent.google.com/u/0/uc?id=1OJfRuLgsBnIBWtdRXbRsD2sG6NhMKOg9&export=download", NULL};
-    execvp("curl", args);
-    exit(1);
-  } else {
-    wait(NULL);
-  }
+  if (access("Soal_2/delivery_order.csv", F_OK) != 0) {
+    pid_t pid = fork();
+    if (pid == 0) {
+      char *args[] = {"sh", "-c", "wget --quiet --load-cookies /tmp/cookies.txt \"https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=BU299JKGENW28R' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\\1/p')&id=1OJfRuLgsBnIBWtdRXbRsD2sG6NhMKOg9\" -O Soal_2/delivery_order.csv && rm -rf /tmp/cookies.txt", NULL};
+      execvp("sh", args);
+      exit(EXIT_FAILURE);
+    } else {
+      wait(NULL);
+   }
+ }
 
   FILE *fp = fopen("Soal_2/delivery_order.csv", "r");
   if (!fp) {
@@ -110,7 +112,7 @@ int main(int argc, char *argv[]) {
           break;
       }    
   } if (!found) {
-    printf("Order in the name of %s is not found.\n", target);
+    printf("Order in the name of %s not found.\n", target);
   } 
   } else if (argc == 2 && strcmp(argv[1], "-list") == 0) {
     printf("Order List:\n");
@@ -136,5 +138,6 @@ int main(int argc, char *argv[]) {
   shmdt(orders);
   return 0;
 }
+
 
 
