@@ -422,7 +422,7 @@ int main() {
         else if (cmd == 3) hunter_battle();        
         else if (cmd == 4) run_notification_loop(); 
         else if (cmd == 5) break;
-        else printf(BOLD RED"Invalid option. Please choose from 1 to 5.\n"RESET);
+        else printf(BOLD RED"Invalid option.\n"RESET);
     }
 
     shmdt(this_hunter);
