@@ -400,7 +400,7 @@ int main() {
             printf("Exiting without deleting shared memory.\n");
             exit(0);
         } else {
-            printf("Invalid choice. Please try again.\n");
+            printf(BOLD RED"Invalid option.\n"RESET);
         }
     }
 
@@ -409,13 +409,20 @@ int main() {
     int cmd;
     while (1) {
         print_menu();
-        scanf("%d", &cmd);
+        printf("Choice: ");
+        if (scanf("%d", &cmd) != 1) {
+            printf(BOLD RED"Invalid option.\n"RESET);
+            clear_input_buffer();
+            continue;
+        }
         clear_input_buffer();
+
         if (cmd == 1) dungeon_list();              
         else if (cmd == 2) dungeon_raid();         
         else if (cmd == 3) hunter_battle();        
         else if (cmd == 4) run_notification_loop(); 
         else if (cmd == 5) break;
+        else printf(BOLD RED"Invalid option. Please choose from 1 to 5.\n"RESET);
     }
 
     shmdt(this_hunter);

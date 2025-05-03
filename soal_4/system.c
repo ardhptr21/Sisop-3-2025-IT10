@@ -245,6 +245,10 @@ void sigint_handler(int sig) {
     exit(0);
 }
 
+void clear_input_buffer(void) {
+    while (getchar() != '\n');  // Clears the input buffer
+}
+
 int main() {
     signal(SIGINT, sigint_handler);
     key_t key = get_system_key();
@@ -271,14 +275,28 @@ int main() {
         printf("Choice: ");
 
         scanf("%d", &cmd);
-        if (cmd == 1) tampilkan_semua_hunter();          // SOAL B
-        else if (cmd == 2) tampilkan_semua_dungeon();    // SOAL E
-        else if (cmd == 3) generate_dungeon();          // SOAL D
-        else if (cmd == 4) duel();                      // SOAL G
-        else if (cmd == 5) ban_hunter();                // SOAL H
+        if (cmd == 1) {
+            tampilkan_semua_hunter();          // SOAL B
+        }
+        else if (cmd == 2) {
+            tampilkan_semua_dungeon();    // SOAL E
+        }
+        else if (cmd == 3) {
+            generate_dungeon();          // SOAL D
+        }
+        else if (cmd == 4) {
+            duel();                      // SOAL G
+        }
+        else if (cmd == 5) {
+            ban_hunter();                // SOAL H
+        }
         else if (cmd == 6) {
             sigint_handler(0);  
             break;
+        }
+        else {
+            // Handle invalid option
+            printf(BOLD RED"Invalid option. \n"RESET);
         }
     }
 
