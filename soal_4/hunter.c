@@ -5,6 +5,18 @@
 #include <string.h>
 #include <signal.h>
 #include <sys/select.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/stat.h>
+
+#define RESET   "\033[0m"
+#define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+#define BLUE    "\033[34m"
+#define MAGENTA "\033[35m"
+#define CYAN    "\033[36m"
+#define BOLD    "\033[1m"
 
 struct Hunter *this_hunter;
 struct SystemData *system_data;
@@ -68,13 +80,13 @@ void run_notification_loop() {
 
 // Fungsi print_menu tanpa notifikasi otomatis
 void print_menu() {
-    printf("\n=== '%s' MENU ===\n", username);
-    printf("1. Dungeon List\n");
-    printf("2. Dungeon Raid\n");
-    printf("3. Hunter Battle\n");
-    printf("4. Notification\n");  // Opsi 4: Notification
-    printf("5. Exit\n");
-    printf("Choice: ");
+    printf("\n" BOLD CYAN "=== '%s' MENU ===\n" RESET, username);
+    printf(" " GREEN "1. Dungeon List\n");
+    printf(" " GREEN "2. Dungeon Raid\n");
+    printf(" " GREEN "3. Hunter Battle\n");
+    printf(" " GREEN "4. Notification\n");
+    printf(" " GREEN "5. Exit\n" RESET);
+    printf(" Choice: ");
 }
 
 void dungeon_list() {
@@ -159,17 +171,62 @@ void hunter_battle() {
         return;
     }
 
-    // Serangan selalu sukses dalam satu kali serangan
-    printf("You won the battle!\n");
-    this_hunter->atk += target->atk;
-    this_hunter->hp += target->hp;
-    this_hunter->def += target->def;
-
-    shmctl(shmget(target->shm_key, sizeof(struct Hunter), 0666), IPC_RMID, NULL);
-    for (int i = enemy_idx; i < system_data->num_hunters - 1; i++) {
-        system_data->hunters[i] = system_data->hunters[i + 1];
+    // Akses shared memory lawan
+    int target_shmid = shmget(target->shm_key, sizeof(struct Hunter), 0666);
+    struct Hunter *target_shm = shmat(target_shmid, NULL, 0);
+    if (target_shm == (void *)-1) {
+        perror("shmat");
+        return;
     }
-    system_data->num_hunters--;
+
+    int my_power = this_hunter->atk + this_hunter->hp + this_hunter->def;
+    int enemy_power = target_shm->atk + target_shm->hp + target_shm->def;
+
+    if (my_power >= enemy_power) {
+        printf("You won the battle!\n");
+
+        // Tambahkan semua stats lawan
+        this_hunter->atk += target_shm->atk;
+        this_hunter->hp += target_shm->hp;
+        this_hunter->def += target_shm->def;
+
+        // Hapus hunter lawan
+        shmctl(target_shmid, IPC_RMID, NULL);
+
+        // Hapus dari system_data
+        for (int i = enemy_idx; i < system_data->num_hunters - 1; i++) {
+            system_data->hunters[i] = system_data->hunters[i + 1];
+        }
+        system_data->num_hunters--;
+
+        shmdt(target_shm);
+    } else {
+        printf("You lost the battle.\n");
+
+        // Tambahkan stats pemenang ke lawan
+        target_shm->atk += this_hunter->atk;
+        target_shm->hp += this_hunter->hp;
+        target_shm->def += this_hunter->def;
+
+        shmdt(target_shm);
+
+        // Hapus hunter ini
+        shmctl(hunter_id, IPC_RMID, NULL);
+
+        // Hapus dari system_data
+        for (int i = 0; i < system_data->num_hunters; i++) {
+            if (strcmp(system_data->hunters[i].username, this_hunter->username) == 0) {
+                for (int j = i; j < system_data->num_hunters - 1; j++) {
+                    system_data->hunters[j] = system_data->hunters[j + 1];
+                }
+                system_data->num_hunters--;
+                break;
+            }
+        }
+
+        shmdt(this_hunter);
+        exit(0);
+    }
 }
 
 void sigint_handler(int sig) {
@@ -232,11 +289,16 @@ int main() {
                 system_data->hunters[idx].def = 5;
                 system_data->hunters[idx].banned = 0;
 
-                key_t hunter_key = ftok("/tmp", username[0]);
+                // Perbaikan: Gunakan indeks unik untuk shm_key
+                key_t hunter_key = ftok("/tmp", 'A' + idx);
                 system_data->hunters[idx].shm_key = hunter_key;
                 system_data->num_hunters++;
 
                 hunter_id = shmget(hunter_key, sizeof(struct Hunter), IPC_CREAT | 0666);
+                if (hunter_id == -1) {
+                    perror("shmget");
+                    exit(EXIT_FAILURE);
+                }
                 this_hunter = shmat(hunter_id, NULL, 0);
                 memcpy(this_hunter, &system_data->hunters[idx], sizeof(struct Hunter));
                 printf("Registrasi sukses!\n");
@@ -273,8 +335,10 @@ int main() {
                 break;
             }
         } else if (choice == 3) {
-            sigint_handler(0);  // Membersihkan dan keluar
-            break;
+            // Perbaikan: Jangan hapus shared memory saat exit dari menu awal
+            shmdt(system_data);
+            printf("Exiting without deleting shared memory.\n");
+            exit(0);
         } else {
             printf("Invalid choice. Please try again.\n");
         }
