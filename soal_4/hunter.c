@@ -131,7 +131,18 @@ void dungeon_raid() {
         system_data->num_dungeons--;
 
         // Pastikan indeks notifikasi tetap valid
-        system_data->current_notification_index %= system_data->num_dungeons;
+        if (system_data->num_dungeons > 0) {
+            system_data->current_notification_index %= system_data->num_dungeons;
+        } else {
+            system_data->current_notification_index = 0;
+        }
+
+        for (int i = 0; i < system_data->num_hunters; i++) {
+            if (strcmp(system_data->hunters[i].username, this_hunter->username) == 0) {
+                memcpy(&system_data->hunters[i], this_hunter, sizeof(struct Hunter));
+                break;
+            }
+        }
 
         shmctl(shmget(d.shm_key, sizeof(struct Dungeon), 0666), IPC_RMID, NULL);
 
