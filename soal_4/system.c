@@ -265,10 +265,10 @@ int main() {
 
     int cmd;
     while (1) {
-        printf("== SYSTEM MENU ==\n");
+        printf("== SYSTEM MENU ==\n");    // Soal C
         printf("1. Hunter Info\n");
         printf("2. Dungeon Info\n");
-        printf("3. Generate Dungeon\n");
+        printf("3. Generate Dungeon\n"); // SOAL D
         printf("4. Duel Hunter\n");      // SOAL G
         printf("5. Ban Hunter\n");       // SOAL H
         printf("6. Exit\n");
@@ -277,7 +277,7 @@ int main() {
         scanf("%d", &cmd);
         while (getchar() != '\n');
         if (cmd == 1) {
-            tampilkan_semua_hunter();          // SOAL B
+            tampilkan_semua_hunter();         
         }
         else if (cmd == 2) {
             tampilkan_semua_dungeon();    // SOAL E

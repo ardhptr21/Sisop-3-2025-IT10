@@ -91,17 +91,21 @@ void print_menu() {
 
 void dungeon_list() {
     printf("=== AVAILABLE DUNGEONS ===\n");
-    if (system_data->num_dungeons == 0) {
-        printf("No dungeons available.\n");
-        return;
-    }
+
+    int count = 0; // untuk cek apakah ada dungeon yang memenuhi level
 
     for (int i = 0; i < system_data->num_dungeons; i++) {
-        printf("%d. %s (Level %d+)%s\n", 
-            i + 1, 
-            system_data->dungeons[i].name, 
-            system_data->dungeons[i].min_level, 
-            this_hunter->level >= system_data->dungeons[i].min_level ? "" : " (Not Eligible)");
+        if (this_hunter->level >= system_data->dungeons[i].min_level) {
+            printf("%d. %s (Level %d+)\n",
+                   i + 1,
+                   system_data->dungeons[i].name,
+                   system_data->dungeons[i].min_level);
+            count++;
+        }
+    }
+
+    if (count == 0) {
+        printf("No dungeons available for your level.\n");
     }
 }
 
@@ -318,7 +322,7 @@ int main() {
 
     int choice;
     while (1) {
-        printf("\n=== HUNTER MENU ===\n");
+        printf("\n=== HUNTER MENU ===\n");    ///Soal B
         printf("1. Register\n");
         printf("2. Login\n");
         printf("3. Exit\n");
