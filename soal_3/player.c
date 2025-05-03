@@ -31,7 +31,6 @@ int main(int argc, char *argv[]) {
         perror("connection failed");
         exit(EXIT_FAILURE);
     }
-    printf("Connected to address %s:%d\n", HOST, PORT);
 
     int opt;
     while (1) {
@@ -64,6 +63,7 @@ int connect_socket() {
 
 int main_menu() {
     int opt;
+    printf("\e[34m==== MAIN MENU ====\e[0m\n");
     printf("1. Show Player Stats\n");
     printf("2. Shop (Buy Weapons)\n");
     printf("3. View Inventory & Equip Weapons\n");
