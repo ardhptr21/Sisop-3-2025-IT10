@@ -20,10 +20,10 @@ typedef struct {
 
 //membaca file csv ke shared memory
 int read_csv(char *filename, Order *orders) {
-  if (access("Soal_2/delivery_order.csv", F_OK) != 0) {
+  if (access("delivery_order.csv", F_OK) != 0) {
     pid_t pid = fork();
     if (pid == 0) {
-      char *args[] = {"sh", "-c", "wget --quiet --load-cookies /tmp/cookies.txt \"https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=BU299JKGENW28R' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\\1/p')&id=1OJfRuLgsBnIBWtdRXbRsD2sG6NhMKOg9\" -O Soal_2/delivery_order.csv && rm -rf /tmp/cookies.txt", NULL};
+      char *args[] = {"sh", "-c", "wget --quiet --load-cookies /tmp/cookies.txt \"https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=BU299JKGENW28R' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\\1/p')&id=1OJfRuLgsBnIBWtdRXbRsD2sG6NhMKOg9\" -O delivery_order.csv && rm -rf /tmp/cookies.txt", NULL};
       execvp("sh", args);
       exit(EXIT_FAILURE);
     } else {
@@ -31,7 +31,7 @@ int read_csv(char *filename, Order *orders) {
    }
  }
 
-  FILE *fp = fopen("Soal_2/delivery_order.csv", "r");
+  FILE *fp = fopen("delivery_order.csv", "r");
   if (!fp) {
     perror("fopen");
     return 0;
@@ -60,7 +60,7 @@ int read_csv(char *filename, Order *orders) {
 
 //mencatat orderan reguler
 void write_log(char *agents, char *nama, char *alamat) {
-  FILE *log = fopen("/home/asuramawaru/Soal_2/delivery.log", "a");
+  FILE *log = fopen("delivery.log", "a");
   if (!log) {
     return;
  }
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
     }
    
     int found = 0;
-    int total_order = read_csv("Soal_2/delivery_order.csv", orders);
+    int total_order = read_csv("delivery_order.csv", orders);
 
     if (argc < 2) {
       printf("Usage: %s [-status|-deliver|-list] [nama]\n", argv[0]);
@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
     printf("Order List:\n");
     for (int i = 0; i < MAX_ORDERS; i++) {
         if (strlen(orders[i].nama) == 0) continue; 
-        printf("- %s: %s\n", orders[i].nama, orders[i].status == 1 ? "Delivered" : "Pending");
+        printf("- %s: %s (%s)\n", orders[i].nama, orders[i].status == 1 ? "Delivered" : "Pending", orders[i].jenis);
     }    
   } else if (strcmp(argv[1], "-deliver") == 0) {
     char *target_name = argv[2];

@@ -53,7 +53,7 @@ void *express_order(void *arg) {
 
 //mencatat orderan express
 void write_log(char *agents, char *nama, char *alamat) {
-  FILE *log = fopen("/home/asuramawaru/Soal_2/delivery.log", "a");
+  FILE *log = fopen("delivery.log", "a");
   if (!log) {
     return;
 }
