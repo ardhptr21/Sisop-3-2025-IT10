@@ -139,7 +139,7 @@ int recvto_file(int sock, char *filename, size_t size) {
     FILE *fp;
     char buffer[1024];
     size_t total_received = 0;
-    int threshold = 100;
+    int threshold = 50;
 
     fp = fopen(filename, "wb");
     if (!fp) return -1;

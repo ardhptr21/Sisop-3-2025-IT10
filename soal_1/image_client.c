@@ -28,6 +28,9 @@ int main(int argc, char *argv[]) {
     int opt;
 
     while (1) {
+        printf("========================\n");
+        printf("| Image Decoder Client |\n");
+        printf("========================\n");
         printf("1. Send input file to server\n");
         printf("2. Download file from server\n");
         printf("3. Exit\n");
@@ -167,7 +170,7 @@ int recvto_file(int sock, char *filename, size_t size) {
     FILE *fp;
     char buffer[1024];
     size_t total_received = 0;
-    int threshold = 100;
+    int threshold = 50;
 
     fp = fopen(filename, "wb");
     if (!fp) return -1;
