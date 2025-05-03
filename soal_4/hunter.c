@@ -91,15 +91,17 @@ void print_menu() {
 
 void dungeon_list() {
     printf("=== AVAILABLE DUNGEONS ===\n");
-    int found = 0;
-    for (int i = 0; i < system_data->num_dungeons; i++) {
-        if (this_hunter->level >= system_data->dungeons[i].min_level) {
-            printf("%d. %s (Level %d+)\n", i + 1, system_data->dungeons[i].name, system_data->dungeons[i].min_level);
-            found = 1;
-        }
+    if (system_data->num_dungeons == 0) {
+        printf("No dungeons available.\n");
+        return;
     }
-    if (!found) {
-        printf("No available dungeons for your level.\n");
+
+    for (int i = 0; i < system_data->num_dungeons; i++) {
+        printf("%d. %s (Level %d+)%s\n", 
+            i + 1, 
+            system_data->dungeons[i].name, 
+            system_data->dungeons[i].min_level, 
+            this_hunter->level >= system_data->dungeons[i].min_level ? "" : " (Not Eligible)");
     }
 }
 
