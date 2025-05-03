@@ -275,6 +275,7 @@ int main() {
         printf("Choice: ");
 
         scanf("%d", &cmd);
+        while (getchar() != '\n');
         if (cmd == 1) {
             tampilkan_semua_hunter();          // SOAL B
         }
