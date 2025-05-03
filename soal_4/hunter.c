@@ -182,7 +182,6 @@ void hunter_battle() {
         return;
     }
 
-    // Akses shared memory lawan
     int target_shmid = shmget(target->shm_key, sizeof(struct Hunter), 0666);
     struct Hunter *target_shm = shmat(target_shmid, NULL, 0);
     if (target_shm == (void *)-1) {
@@ -196,15 +195,29 @@ void hunter_battle() {
     if (my_power >= enemy_power) {
         printf("You won the battle!\n");
 
-        // Tambahkan semua stats lawan
+        // Tambahkan stats lawan ke this_hunter
         this_hunter->atk += target_shm->atk;
         this_hunter->hp += target_shm->hp;
         this_hunter->def += target_shm->def;
+        this_hunter->exp += target_shm->exp;
 
-        // Hapus hunter lawan
+        if (this_hunter->exp >= 500) {
+            this_hunter->level++;
+            this_hunter->exp = 0;
+        }
+
+        // Update system_data dengan hunter yang menang
+        for (int i = 0; i < system_data->num_hunters; i++) {
+            if (strcmp(system_data->hunters[i].username, this_hunter->username) == 0) {
+                memcpy(&system_data->hunters[i], this_hunter, sizeof(struct Hunter));
+                break;
+            }
+        }
+
+        // Hapus shared memory lawan
         shmctl(target_shmid, IPC_RMID, NULL);
 
-        // Hapus dari system_data
+        // Hapus lawan dari system_data
         for (int i = enemy_idx; i < system_data->num_hunters - 1; i++) {
             system_data->hunters[i] = system_data->hunters[i + 1];
         }
@@ -214,17 +227,31 @@ void hunter_battle() {
     } else {
         printf("You lost the battle.\n");
 
-        // Tambahkan stats pemenang ke lawan
+        // Tambahkan stats this_hunter ke target
         target_shm->atk += this_hunter->atk;
         target_shm->hp += this_hunter->hp;
         target_shm->def += this_hunter->def;
+        target_shm->exp += this_hunter->exp;
+
+        if (target_shm->exp >= 500) {
+            target_shm->level++;
+            target_shm->exp = 0;
+        }
+
+        // Update system_data lawan
+        for (int i = 0; i < system_data->num_hunters; i++) {
+            if (strcmp(system_data->hunters[i].username, target_shm->username) == 0) {
+                memcpy(&system_data->hunters[i], target_shm, sizeof(struct Hunter));
+                break;
+            }
+        }
 
         shmdt(target_shm);
 
-        // Hapus hunter ini
+        // Hapus shared memory this_hunter
         shmctl(hunter_id, IPC_RMID, NULL);
 
-        // Hapus dari system_data
+        // Hapus this_hunter dari system_data
         for (int i = 0; i < system_data->num_hunters; i++) {
             if (strcmp(system_data->hunters[i].username, this_hunter->username) == 0) {
                 for (int j = i; j < system_data->num_hunters - 1; j++) {
@@ -236,7 +263,7 @@ void hunter_battle() {
         }
 
         shmdt(this_hunter);
-        exit(0);
+        exit(0); // keluar dari proses setelah kalah
     }
 }
 
