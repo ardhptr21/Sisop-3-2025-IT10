@@ -41,7 +41,8 @@ int is_enter_pressed() {
     return FD_ISSET(STDIN_FILENO, &fds);
 }
 
-// Fungsi untuk menampilkan satu dungeon
+// Soal K
+// Fungsi untuk menampilkan notification satu dungeon 
 void show_single_notification(int index) {
     if (index >= system_data->num_dungeons || index < 0) return;
 
@@ -78,7 +79,7 @@ void run_notification_loop() {
     }
 }
 
-// Fungsi print_menu tanpa notifikasi otomatis
+// Fungsi print_menu 
 void print_menu() {
     printf("\n" BOLD CYAN "=== '%s' MENU ===\n" RESET, username);
     printf(" " GREEN "1. Dungeon List\n");
@@ -89,6 +90,7 @@ void print_menu() {
     printf(" Choice: ");
 }
 
+// Soal F menmapilkan dungeon sesuai lvl
 void dungeon_list() {
     printf("=== AVAILABLE DUNGEONS ===\n");
 
@@ -109,6 +111,7 @@ void dungeon_list() {
     }
 }
 
+// Soal G: Raid Dungeon
 void dungeon_raid() {
     dungeon_list();
     printf("Choose Dungeon: ");
@@ -162,6 +165,7 @@ void dungeon_raid() {
     }
 }
 
+// Soal H: Hunter Battle
 void hunter_battle() {
     char enemy[50];
     printf("Enter enemy hunter username: ");
@@ -399,7 +403,6 @@ int main() {
                 break;
             }
         } else if (choice == 3) {
-            // Perbaikan: Jangan hapus shared memory saat exit dari menu awal
             shmdt(system_data);
             printf("Exiting without deleting shared memory.\n");
             exit(0);
@@ -413,7 +416,7 @@ int main() {
     int cmd;
     while (1) {
         print_menu();
-        printf("Choice: ");
+        printf(" ");
         if (scanf("%d", &cmd) != 1) {
             printf(BOLD RED"Invalid option.\n"RESET);
             clear_input_buffer();
@@ -427,7 +430,7 @@ int main() {
         else if (cmd == 4) run_notification_loop(); 
         else if (cmd == 5) break;
         else printf(BOLD RED"Invalid option.\n"RESET);
-    }
+    } 
 
     shmdt(this_hunter);
     shmdt(system_data);

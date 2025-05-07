@@ -74,8 +74,7 @@ void generate_dungeon() {
     printf(" " BOLD BLUE "SharedMem Key  : " RESET "%d\n", d->shm_key);
 }
 
-// SOAL D: Tampilkan Semua Dungeon
-// SOAL D: Tampilkan Semua Dungeon
+// SOAL E: Tampilkan Semua Dungeon
 void tampilkan_semua_dungeon() {
     printf("\n" BOLD CYAN "╔════════════════════════════════════════════╗\n" RESET);
     printf(        BOLD CYAN "║             DAFTAR DUNGEON                 ║\n" RESET);
@@ -94,7 +93,7 @@ void tampilkan_semua_dungeon() {
     }
 }
 
-// SOAL G: Fitur duel antar hunter
+// SOAL H: Fitur duel antar hunter
 void duel() {
     char user1[50], user2[50];
     printf("\n" BOLD YELLOW "Masukkan username hunter 1: " RESET);
@@ -155,7 +154,7 @@ void duel() {
     printf(GREEN "\n%s menang duel melawan %s!\n" RESET, winner->username, loser->username);
 }
 
-// SOAL H: Ban Hunter
+// SOAL I: Ban Hunter
 void ban_hunter() {
     char user[50];
     printf("Masukkan username yang ingin diban: ");
@@ -179,7 +178,7 @@ void ban_hunter() {
     printf("Hunter tidak ditemukan.\n");
 }
 
-// SOAL I: Reset Hunter ke stats awal
+// SOAL J: Reset Hunter ke stats awal
 void reset_hunter() {
     char user[50];
     printf("Masukkan username yang ingin direset: ");
@@ -211,7 +210,7 @@ void reset_hunter() {
     printf("Hunter tidak ditemukan.\n");
 }
 
-// SOAL L: Unban Hunter
+// Unban Hunter
 void unban_hunter() {
     char user[50];
     printf("Masukkan username yang ingin di-unban: ");
@@ -226,7 +225,7 @@ void unban_hunter() {
     printf("Hunter tidak ditemukan.\n");
 }
 
-// SOAL K: Hapus semua shared memory saat exit
+// SOAL L: Hapus semua shared memory saat exit
 void sigint_handler(int sig) {
     printf("\nSystem shutting down...\n");
 
@@ -264,42 +263,46 @@ int main() {
     printf("System aktif!\n");
 
     int cmd;
-    while (1) {
-        printf("== SYSTEM MENU ==\n");    // Soal C
-        printf("1. Hunter Info\n");
-        printf("2. Dungeon Info\n");
-        printf("3. Generate Dungeon\n"); // SOAL D
-        printf("4. Duel Hunter\n");      // SOAL G
-        printf("5. Ban Hunter\n");       // SOAL H
-        printf("6. Exit\n");
-        printf("Choice: ");
+while (1) {
+    printf("== SYSTEM MENU ==\n");    // Soal C
+    printf("1. Hunter Info\n");
+    printf("2. Dungeon Info\n");
+    printf("3. Generate Dungeon\n"); // SOAL D
+    printf("4. Duel Hunter\n");      // SOAL G
+    printf("5. Ban Hunter\n");       // SOAL H
+    printf("6. Unban Hunter\n");     // SOAL J
+    printf("7. Exit\n");
+    printf("Choice: ");
 
-        scanf("%d", &cmd);
-        while (getchar() != '\n');
-        if (cmd == 1) {
-            tampilkan_semua_hunter();         
-        }
-        else if (cmd == 2) {
-            tampilkan_semua_dungeon();    // SOAL E
-        }
-        else if (cmd == 3) {
-            generate_dungeon();          // SOAL D
-        }
-        else if (cmd == 4) {
-            duel();                      // SOAL G
-        }
-        else if (cmd == 5) {
-            ban_hunter();                // SOAL H
-        }
-        else if (cmd == 6) {
-            sigint_handler(0);  
-            break;
-        }
-        else {
-            // Handle invalid option
-            printf(BOLD RED"Invalid option. \n"RESET);
-        }
+    scanf("%d", &cmd);
+    while (getchar() != '\n');
+    if (cmd == 1) {
+        tampilkan_semua_hunter();         
     }
+    else if (cmd == 2) {
+        tampilkan_semua_dungeon();    // SOAL E
+    }
+    else if (cmd == 3) {
+        generate_dungeon();          // SOAL D
+    }
+    else if (cmd == 4) {
+        duel();                      // SOAL G
+    }
+    else if (cmd == 5) {
+        ban_hunter();                // SOAL H
+    }
+    else if (cmd == 6) {
+        unban_hunter();
+    }
+    else if (cmd == 7) {
+        sigint_handler(0);  
+        break;
+    }
+    else {
+        // Handle invalid option
+        printf(BOLD RED"Invalid option. \n"RESET);
+    }
+}
 
     return 0;
 }
