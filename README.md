@@ -727,20 +727,70 @@ Tidak ada kendala
 #### Penjelasan
 Pada soal ini diminta untuk membantu Sung Jin Woo untuk melakukan modifikasi program.  
 A) Membuat file system.c dan hunter.c dan memastikan bahwa hunter hanya bisa dijalankan apabila system sudah jalan.  
-B) Membuat registrasi dan login menu serta hunter menu.  
-C) Membuat system menu yang lalu terdapat fitur untuk menampilkan informasi lengkap hunter.  
-D) Membuat fitur generate dungeon.  
-E) Menambahkan fitur yang dapat menampilkan daftar lengkap dungeon.  
+
+B) Membuat registrasi dan login menu serta hunter menu. 
+
+C) Membuat system menu yang lalu terdapat fitur untuk menampilkan informasi lengkap hunter.
+
+D) Membuat fitur generate dungeon.
+
+E) Menambahkan fitur yang dapat menampilkan daftar lengkap dungeon.
+
 F) Menambahkan fitur menampilkan dungeon sesuai level hunter pada menu hunter.  
-G) Menambahkan fitur dungeon raid.  
+
+G) Menambahkan fitur dungeon raid. 
+
 H) Menambahkan fitur hunter battle.  
+
 I) Menambahkan fitur ban hunter.  
+
 J) Menambahkan fitur unban hunter.  
-K) Menambahkan fitur notifikasi yang berganti tiap 3 detik.  
+
+K) Menambahkan fitur notifikasi yang berganti tiap 3 detik. 
+
 L) Menghapus shared memory setiap kali sistem dimatikan.
 
-#### Output
 
+#### Output
+Pada soal ini diminta untuk membantu Sung Jin Woo untuk melakukan modifikasi program.  
+A) Membuat file system.c dan hunter.c dan memastikan bahwa hunter hanya bisa dijalankan apabila system sudah jalan.    
+   ![](assets/soal_4/soal_4_a1.png)
+   ![](assets/soal_4/soal_4_a2.png)    
+   
+B) Membuat registrasi dan login menu serta hunter menu.
+    ![](assets/soal_4/soal_4_b.png)
+    
+C) Membuat system menu yang lalu terdapat fitur untuk menampilkan informasi lengkap hunter.  
+    ![](assets/soal_4/soal_4_c.png)
+    
+D) Membuat fitur generate dungeon.  
+    ![](assets/soal_4/soal_4_d.png)
+    
+E) Menambahkan fitur yang dapat menampilkan daftar lengkap dungeon.  
+    ![](assets/soal_4/soal_4_e.png)
+    
+F) Menambahkan fitur menampilkan dungeon sesuai level hunter pada menu hunter.  
+    ![](assets/soal_4/soal_4_f.png)
+    
+G) Menambahkan fitur dungeon raid.   
+    ![](assets/soal_4/soal_4_g.png)
+    
+H) Menambahkan fitur hunter battle.    
+    ![](assets/soal_4/soal_4_h.png)
+    
+I) Menambahkan fitur ban hunter.  
+    ![](assets/soal_4/soal_4_i.png)
+    
+J) Menambahkan fitur unban hunter.    
+    ![](assets/soal_4/soal_4_j.png)
+    
+K) Menambahkan fitur notifikasi yang berganti tiap 3 detik.   
+    ![](assets/soal_4/soal_4_k.png)
+    
+L) Menghapus shared memory setiap kali sistem dimatikan. 
+    ![](assets/soal_4/soal_4_l.png)
+
+    
 #### Kendala
 
 Tidak ada kendala
