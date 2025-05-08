@@ -830,6 +830,21 @@ else if (argc == 2 && strcmp(argv[1], "-list") == 0) {
 
 #### Output
 
+1. Mengunduh file delivery_order.csv
+   
+![alt text](assets/soal_2/1.png)
+
+2. Melakukan pengiriman express
+   
+![alt text](assets/soal_2/express_order.png)
+
+![alt text](assets/soal_2/output_express_order.png)
+
+3. Melakukan pengiriman reguler
+
+
+   
+
 #### Kendala
 
 Tidak ada kendala
