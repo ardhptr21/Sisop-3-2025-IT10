@@ -270,8 +270,9 @@ while (1) {
     printf("3. Generate Dungeon\n"); // SOAL D
     printf("4. Duel Hunter\n");      // SOAL G
     printf("5. Ban Hunter\n");       // SOAL H
-    printf("6. Unban Hunter\n");     // SOAL J
-    printf("7. Exit\n");
+    printf("6. Unban Hunter\n");     
+    printf("7. Reset Hunter\n");    // SOAL J
+    printf("8. Exit\n");
     printf("Choice: ");
 
     scanf("%d", &cmd);
@@ -295,6 +296,9 @@ while (1) {
         unban_hunter();
     }
     else if (cmd == 7) {
+        reset_hunter();              // SOAL J
+    }
+    else if (cmd == 8) {
         sigint_handler(0);  
         break;
     }
