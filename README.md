@@ -702,6 +702,72 @@ Tidak ada kendala
 
 #### Penjelasan
 
+
+**a. Mengunduh File Order dan Menyimpannya ke Shared Memory**
+
+Langkah pertama adalah mengunduh file `delivery_order.csv` yang lalu akan dieksekusi oleh `execvp("sh", args);`. File tersebut lalu akan dibaca dan disimpan ke shared memory di main().
+
+```c
+int read_csv(char *filename, Order *orders) {
+  if (access("Soal_2/delivery_order.csv", F_OK) != 0) {
+    pid_t pid = fork();
+    if (pid == 0) {
+      char *args[] = {"sh", "-c", "wget --quiet --no-cache --no-cookies --no-check-certificate \"https://docs.google.com/uc?export=download&confirm=$(wget --quiet --no-cache --no-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=BU299JKGENW28R' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\\1/p')&id=1OJfRuLgsBnIBWtdRXbRsD2sG6NhMKOg9\" -O Soal_2/delivery_order.csv", NULL};
+      execvp("sh", args);
+      exit(EXIT_FAILURE);
+    } else {
+      wait(NULL);
+   }
+ }
+
+  FILE *fp = fopen("Soal_2/delivery_order.csv", "r");
+  if (!fp) {
+    perror("fopen");
+    return 0;
+  }
+```
+
+**b. Pengiriman Bertipe Express**
+
+Langkah pertama adalah mendeklarasikan agen-agen sebagai thread yang terpisah yang akan menjalankan fungsi express_order.
+
+```c
+ pthread_t express_agents[3];
+    char *agent_names[] = {"AGENT A", "AGENT B", "AGENT C"};
+
+    for (int i = 0; i < 3; i++) {
+      pthread_create(&express_agents[i], NULL, express_order, agent_names[i]);
+    }
+```
+`pthread_mutex_init(&lock, NULL);` digunakan untuk menginisialisasikan mutex Agar thread yang dijalankan tidak bertabrakan satu sama lain, lalu saat thread mulai mencari order express, pthread_mutex_lock(&lock); digunakan untuk mengunci akses, lalu pthread_mutex_unlock(&lock); digunakan untuk membukanya kembali setelah selesai sehingga thread lain bisa melanjutkan tugasnya.
+
+```c
+ pthread_mutex_init(&lock, NULL); 
+```
+
+Pencarian penerima dengan tipe express sendiri dilakukan dengan melihat apakah jenis orderannya express dan status orderan masih false. Kalau memenuhi, maka status diubah jadi true, lalu nama agen disimpan dalam delivered_by oleh `strcpy` dan dicatat dalam delivery_log
+
+```c
+  while (1) {
+  pthread_mutex_lock(&lock);
+  bool found = false;
+
+  for (int i = 0; i < MAX_ORDERS; i++) {
+   if (strcmp(orders[i].jenis, "Express") == 0 && orders[i].status == false) {
+      orders[i].status = true;
+      strcpy(orders[i].delivered_by, agent_name);
+      write_log(agent_name, orders[i].nama, orders[i].alamat);
+      found = true;
+      break;
+     }
+    }
+    pthread_mutex_unlock(&lock); 
+    if (!found) break;
+    sleep(1);
+  }
+```
+
+
 #### Output
 
 #### Kendala
