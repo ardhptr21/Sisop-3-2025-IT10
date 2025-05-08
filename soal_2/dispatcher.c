@@ -20,10 +20,10 @@ typedef struct {
 
 //membaca file csv ke shared memory
 int read_csv(char *filename, Order *orders) {
-  if (access("delivery_order.csv", F_OK) != 0) {
+  if (access("Soal_2/delivery_order.csv", F_OK) != 0) {
     pid_t pid = fork();
     if (pid == 0) {
-      char *args[] = {"sh", "-c", "wget --quiet --load-cookies /tmp/cookies.txt \"https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=BU299JKGENW28R' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\\1/p')&id=1OJfRuLgsBnIBWtdRXbRsD2sG6NhMKOg9\" -O delivery_order.csv && rm -rf /tmp/cookies.txt", NULL};
+      char *args[] = {"sh", "-c", "wget --quiet --no-cache --no-cookies --no-check-certificate \"https://docs.google.com/uc?export=download&confirm=$(wget --quiet --no-cache --no-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=BU299JKGENW28R' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\\1/p')&id=1OJfRuLgsBnIBWtdRXbRsD2sG6NhMKOg9\" -O Soal_2/delivery_order.csv", NULL};
       execvp("sh", args);
       exit(EXIT_FAILURE);
     } else {
@@ -31,7 +31,7 @@ int read_csv(char *filename, Order *orders) {
    }
  }
 
-  FILE *fp = fopen("delivery_order.csv", "r");
+  FILE *fp = fopen("Soal_2/delivery_order.csv", "r");
   if (!fp) {
     perror("fopen");
     return 0;
@@ -78,7 +78,6 @@ void write_log(char *agents, char *nama, char *alamat) {
 }
 
 int main(int argc, char *argv[]) {
-
     key_t key = 1234;
     int shmid = shmget(key, sizeof(Order) * MAX_ORDERS, IPC_CREAT | 0666);
     if (shmid == -1) {
@@ -92,9 +91,9 @@ int main(int argc, char *argv[]) {
     }
    
     int found = 0;
-    int total_order = read_csv("delivery_order.csv", orders);
+    int total_order = read_csv("Soal_2/delivery_order.csv", orders);
 
-    if (argc < 2) {
+  if (argc < 2) {
       printf("Usage: %s [-status|-deliver|-list] [nama]\n", argv[0]);
       return 1;
   }
@@ -130,14 +129,18 @@ int main(int argc, char *argv[]) {
         if (delivered_by != NULL) {
         strcpy(orders[i].delivered_by, delivered_by);
         }
+        printf("Delivering %s by %s\n", orders[i].nama, orders[i].delivered_by);
         write_log(orders[i].delivered_by, orders[i].nama, orders[i].alamat);
         break;
      }  
+     else if (strcmp(orders[i].nama, target_name) == 0 && strcmp(orders[i].jenis, "Express") == 0) {
+        printf("Command can't deliver an Express orders.\n");
+        break;
    }
  }
   shmdt(orders);
   return 0;
 }
-
+}
 
 
