@@ -716,6 +716,54 @@ Tidak ada kendala
 
 #### Output
 
+1. Client connected ke server dan main menu
+
+![alt text](assets/soal_3/client_connected.png)
+
+2. Stats player
+
+![alt text](assets/soal_3/stats.png)
+
+3. Weapon list dan buy weapon
+
+![alt text](assets/soal_3/weapon_list.png)
+
+4. View inventory and equipped
+
+![alt text](assets/soal_3/inventory_equipped.png)
+
+5. Battle mode
+
+![alt text](assets/soal_3/battle.png)
+
+6. Attacking dan damage
+
+![alt text](assets/soal_3/attack.png)
+
+7. Critical attack
+
+![alt text](assets/soal_3/critical.png)
+
+8. Passive active
+
+![alt text](assets/soal_3/passive.png)
+
+9. Gold reward
+
+![alt text](assets/soal_3/reward.png)
+
+10. Stats setelah melakukan kill dan mendapatkan reward
+
+![alt text](assets/soal_3/after_battle.png)
+
+11. Error handling
+
+![alt text](assets/soal_3/error_1.png)
+![alt text](assets/soal_3/error_2.png)
+![alt text](assets/soal_3/error_3.png)
+![alt text](assets/soal_3/error_4.png)
+![alt text](assets/soal_3/error_5.png)
+
 #### Kendala
 
 Tidak ada kendala
@@ -725,8 +773,10 @@ Tidak ada kendala
 **Dikerjakan oleh: Kanafira Vanesha Putri (5027241010)**
 
 #### Penjelasan
+
 Pada soal ini diminta untuk membantu Sung Jin Woo untuk melakukan modifikasi program.  
 A) Membuat file system.c dan hunter.c dan memastikan bahwa hunter hanya bisa dijalankan apabila system sudah jalan. Sehingga code ini memastikan bahwa shared memory telah dibuat.
+
 ```c
     signal(SIGINT, sigint_handler);
     key_t key = get_system_key();
@@ -739,6 +789,7 @@ A) Membuat file system.c dan hunter.c dan memastikan bahwa hunter hanya bisa dij
 ```
 
 B) Membuat registrasi dan login menu serta hunter menu. Jadi kita membuat function untuk registrasi menu dengan ketentuan yang sudah ada di soal. lalu memasukkan menu tersebut ke main nya agar bisa dipanggil sesuai dengan kondisinya.
+
 ```c
 void print_menu() {
     printf("\n" BOLD CYAN "=== '%s' MENU ===\n" RESET, username);
@@ -752,7 +803,7 @@ void print_menu() {
 
     int choice;
     while (1) {
-        printf("\n=== HUNTER MENU ===\n");  
+        printf("\n=== HUNTER MENU ===\n");
         printf("1. Register\n");
         printf("2. Login\n");
         printf("3. Exit\n");
@@ -798,7 +849,7 @@ void print_menu() {
 
                 break;
             } else {
-                printf("Username sudah terdaftar.\n"); 
+                printf("Username sudah terdaftar.\n");
             }
         } else if (choice == 2) {
             printf("Masukkan username: ");
@@ -844,7 +895,7 @@ Setelah registrasi lalu terdapat menu hunter.
 
 int choice;
     while (1) {
-        printf("\n=== HUNTER MENU ===\n");   
+        printf("\n=== HUNTER MENU ===\n");
         printf("1. Register\n");
         printf("2. Login\n");
         printf("3. Exit\n");
@@ -878,42 +929,42 @@ Lalu kita panggil function diatas pada kondisi sesuai yang ada di menu yang tert
 ```c
     int cmd;
 while (1) {
-    printf("== SYSTEM MENU ==\n");   
+    printf("== SYSTEM MENU ==\n");
     printf("1. Hunter Info\n");
     printf("2. Dungeon Info\n");
-    printf("3. Generate Dungeon\n"); 
-    printf("4. Duel Hunter\n");      
-    printf("5. Ban H-unter\n");       
-    printf("6. Unban Hunter\n");     
-    printf("7. Reset Hunter\n");   
+    printf("3. Generate Dungeon\n");
+    printf("4. Duel Hunter\n");
+    printf("5. Ban H-unter\n");
+    printf("6. Unban Hunter\n");
+    printf("7. Reset Hunter\n");
     printf("8. Exit\n");
     printf("Choice: ");
 
     scanf("%d", &cmd);
     while (getchar() != '\n');
     if (cmd == 1) {
-        tampilkan_semua_hunter();         
+        tampilkan_semua_hunter();
     }
     else if (cmd == 2) {
-        tampilkan_semua_dungeon();    
+        tampilkan_semua_dungeon();
     }
     else if (cmd == 3) {
-        generate_dungeon();          
+        generate_dungeon();
     }
     else if (cmd == 4) {
-        duel();                    
+        duel();
     }
     else if (cmd == 5) {
-        ban_hunter();               
+        ban_hunter();
     }
     else if (cmd == 6) {
         unban_hunter();
     }
     else if (cmd == 7) {
-        reset_hunter();             
+        reset_hunter();
     }
     else if (cmd == 8) {
-        sigint_handler(0);  
+        sigint_handler(0);
         break;
     }
     else {
@@ -921,6 +972,7 @@ while (1) {
     }
 }
 ```
+
 D) Membuat funtion untuk fitur generate dungeon dengan ketentuan ketentuan yang telah diberikan pada soal yaitu level, exp, atk, hps, def, dan key lalu memasukkannya ke dalam main menu. dimana setiap dungeon akan disimpan dalam shared memory sendiri yang berbeda dan dapat diakses oleh hunter.
 
 ```c
@@ -967,6 +1019,7 @@ void generate_dungeon() {
 ```
 
 E) Membuat function untuk fitur yang dapat menampilkan daftar lengkap dungeon. Function tampilkan_semua_dungeon berisi rincian spesifikasi dari dungeon yang telah digenerate tanpa memandang level. Lalu memanggil function ini pada main menu.
+
 ```c
 void tampilkan_semua_dungeon() {
     printf("\n" BOLD CYAN "╔════════════════════════════════════════════╗\n" RESET);
@@ -988,11 +1041,12 @@ void tampilkan_semua_dungeon() {
 ```
 
 F) Menambahkan fitur menampilkan dungeon sesuai level hunter pada menu hunter. Pada function ini dungeon ditampilkan berdasarkan level dari hunternya sehingga berbeda dengan yang ada pada menu system.
+
 ```c
 void dungeon_list() {
     printf("=== AVAILABLE DUNGEONS ===\n");
 
-    int count = 0; 
+    int count = 0;
 
     for (int i = 0; i < system_data->num_dungeons; i++) {
         if (this_hunter->level >= system_data->dungeons[i].min_level) {
@@ -1011,6 +1065,7 @@ void dungeon_list() {
 ```
 
 G) Menambahkan function untuk fitur dungeon raid. Yaitu dengan mengecek terlebih dahulu apakah ada dungeon yang tersedia lalu memastikan indexnya dan jika hunter menang maka dungeon akan hilang dan menambahkan stat dari dungeon yang dikalahkan ke stat hunter lalu jika exp hunter mencapai 500 maka hunter akan naik level dan jika level up maka exp level kembali ke 0
+
 ```c
 void dungeon_raid() {
     dungeon_list();
@@ -1022,7 +1077,7 @@ void dungeon_raid() {
 
     if (choice >= 0 && choice < system_data->num_dungeons &&
         this_hunter->level >= system_data->dungeons[choice].min_level) {
-        
+
         struct Dungeon d = system_data->dungeons[choice];
         this_hunter->atk += d.atk;
         this_hunter->hp += d.hp;
@@ -1066,6 +1121,7 @@ void dungeon_raid() {
 ```
 
 H) Menambahkan function untuk fitur hunter battle. Pada menu ini hunter dapat memilih hunter lain yang ingin dilawan lalu terdapat kondisi dimana hunter yang menang akan mendapatkan stat tambahan dari stat hunter yang kalah dan akan dihapus dari system.
+
 ```c
 void duel() {
     char user1[50], user2[50];
@@ -1129,6 +1185,7 @@ void duel() {
 ```
 
 I) Menambahkan function untuk fitur ban hunter. Lalu function ini akan dipanggil pada main menu system
+
 ```c
 void ban_hunter() {
     char user[50];
@@ -1154,6 +1211,7 @@ void ban_hunter() {
 ```
 
 J) Menambahkan function untuk fitur unban hunter. Sehingga function ini mengaktifkan kembali hunter yang sebelumnya dilarang (banned), dengan cara mengatur flag banned = 0 pada data hunter di shared memory.
+
 ```c
 void unban_hunter() {
     char user[50];
@@ -1171,6 +1229,7 @@ void unban_hunter() {
 ```
 
 K) Menambahkan function untuk fitur notifikasi yang berganti tiap 3 detik. Menampilkan real-time notifikasi dungeon kepada hunter seperti layaknya sistem game, dengan siklus dinamis dan penghentian yang intuitif.
+
 ```c
 void show_single_notification(int index) {
     if (index >= system_data->num_dungeons || index < 0) return;
@@ -1206,11 +1265,14 @@ void run_notification_loop() {
     }
 }
 ```
+
 L) Menghapus shared memory setiap kali sistem dimatikan.
+
 ```c
 void sigint_handler(int sig) {
     printf("\nSystem shutting down...\n");
 
+<<<<<<< HEAD
     for (int i = 0; i < system_data->num_hunters; i++) {
         int shmid = shmget(system_data->hunters[i].shm_key, sizeof(struct Hunter), 0666);
         if (shmid != -1) shmctl(shmid, IPC_RMID, NULL);
@@ -1228,45 +1290,45 @@ void sigint_handler(int sig) {
 ```
 
 #### Output
-Pada soal ini diminta untuk membantu Sung Jin Woo untuk melakukan modifikasi program.  
-A) Membuat file system.c dan hunter.c dan memastikan bahwa hunter hanya bisa dijalankan apabila system sudah jalan.    
-   ![](assets/soal_4/soal_4_a1.png)
-   ![](assets/soal_4/soal_4_a2.png)    
-   
-B) Membuat registrasi dan login menu serta hunter menu.
-    ![](assets/soal_4/soal_4_b.png)
-    
-C) Membuat system menu yang lalu terdapat fitur untuk menampilkan informasi lengkap hunter.  
-    ![](assets/soal_4/soal_4_c.png)
-    
-D) Membuat fitur generate dungeon.  
-    ![](assets/soal_4/soal_4_d.png)
-    
-E) Menambahkan fitur yang dapat menampilkan daftar lengkap dungeon.  
-    ![](assets/soal_4/soal_4_e.png)
-    
-F) Menambahkan fitur menampilkan dungeon sesuai level hunter pada menu hunter.  
-    ![](assets/soal_4/soal_4_f.png)
-    
-G) Menambahkan fitur dungeon raid.   
-    ![](assets/soal_4/soal_4_g.png)
-    
-H) Menambahkan fitur hunter battle.    
-    ![](assets/soal_4/soal_4_h.png)
-    
-I) Menambahkan fitur ban hunter.  
-    ![](assets/soal_4/soal_4_i.png)
-    
-J) Menambahkan fitur unban hunter.    
-    ![](assets/soal_4/soal_4_j.png)
-    
-K) Menambahkan fitur notifikasi yang berganti tiap 3 detik.   
-    ![](assets/soal_4/soal_4_k.png)
-    
-L) Menghapus shared memory setiap kali sistem dimatikan. 
-    ![](assets/soal_4/soal_4_l.png)
 
-    
+Pada soal ini diminta untuk membantu Sung Jin Woo untuk melakukan modifikasi program.  
+A) Membuat file system.c dan hunter.c dan memastikan bahwa hunter hanya bisa dijalankan apabila system sudah jalan.  
+ ![](assets/soal_4/soal_4_a1.png)
+![](assets/soal_4/soal_4_a2.png)
+
+B) Membuat registrasi dan login menu serta hunter menu.
+![](assets/soal_4/soal_4_b.png)
+
+C) Membuat system menu yang lalu terdapat fitur untuk menampilkan informasi lengkap hunter.  
+ ![](assets/soal_4/soal_4_c.png)
+
+D) Membuat fitur generate dungeon.  
+ ![](assets/soal_4/soal_4_d.png)
+
+E) Menambahkan fitur yang dapat menampilkan daftar lengkap dungeon.  
+ ![](assets/soal_4/soal_4_e.png)
+
+F) Menambahkan fitur menampilkan dungeon sesuai level hunter pada menu hunter.  
+ ![](assets/soal_4/soal_4_f.png)
+
+G) Menambahkan fitur dungeon raid.  
+ ![](assets/soal_4/soal_4_g.png)
+
+H) Menambahkan fitur hunter battle.  
+ ![](assets/soal_4/soal_4_h.png)
+
+I) Menambahkan fitur ban hunter.  
+ ![](assets/soal_4/soal_4_i.png)
+
+J) Menambahkan fitur unban hunter.  
+ ![](assets/soal_4/soal_4_j.png)
+
+K) Menambahkan fitur notifikasi yang berganti tiap 3 detik.  
+ ![](assets/soal_4/soal_4_k.png)
+
+L) Menghapus shared memory setiap kali sistem dimatikan.
+![](assets/soal_4/soal_4_l.png)
+
 #### Kendala
 
 Tidak ada kendala
