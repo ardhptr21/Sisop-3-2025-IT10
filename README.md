@@ -1153,7 +1153,7 @@ void ban_hunter() {
 }
 ```
 
-J) Menambahkan function untuk fitur unban hunter. Sehingga function ini mengaktifkan kembali hunter yang sebelumnya dilarang (banned), dengan cara mengatur flag banned = 0 pada data hunter di shared memory.
+J) Menambahkan function untuk fitur unban hunter lalu mereset hunter. Sehingga function ini mengaktifkan kembali hunter yang sebelumnya dilarang (banned), dengan cara mengatur flag banned = 0 pada data hunter di shared memory.
 ```c
 void unban_hunter() {
     char user[50];
@@ -1163,6 +1163,37 @@ void unban_hunter() {
         if (strcmp(system_data->hunters[i].username, user) == 0) {
             system_data->hunters[i].banned = 0;
             printf("%s telah di-unban.\n", user);
+            return;
+        }
+    }
+    printf("Hunter tidak ditemukan.\n");
+}
+
+void reset_hunter() {
+    char user[50];
+    printf("Masukkan username yang ingin direset: ");
+    scanf("%s", user);
+    for (int i = 0; i < system_data->num_hunters; i++) {
+        if (strcmp(system_data->hunters[i].username, user) == 0) {
+            system_data->hunters[i].level = 1;
+            system_data->hunters[i].exp = 0;
+            system_data->hunters[i].atk = 10;
+            system_data->hunters[i].hp = 100;
+            system_data->hunters[i].def = 5;
+
+            // Update shared memory
+            int shmid = shmget(system_data->hunters[i].shm_key, sizeof(struct Hunter), 0666);
+            struct Hunter *shm_hunter = shmat(shmid, NULL, 0);
+            if (shm_hunter != (void *)-1) {
+                shm_hunter->level = 1;
+                shm_hunter->exp = 0;
+                shm_hunter->atk = 10;
+                shm_hunter->hp = 100;
+                shm_hunter->def = 5;
+                shmdt(shm_hunter);
+            }
+
+            printf("%s telah direset.\n", user);
             return;
         }
     }
