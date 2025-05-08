@@ -768,6 +768,66 @@ Pencarian penerima dengan tipe express sendiri dilakukan dengan melihat apakah j
 ```
 
 
+**c. Pengiriman Bertipe Reguler**
+Pengiriman reguler dapat dilakukan dengan pemanggilan dengan format `./dispatcher -deliver [nama penerima]`, lalu akan dilakukan looping untuk mencari nama penerima yang kita panggil melalui strcmp. Jika penerima ditemukan maka status order-an akan diubah menjadi order (atau sudah delivered) dan menyimpan pengiriman ke dalam log.
+
+```c
+else if (strcmp(argv[1], "-deliver") == 0) {
+    char *target_name = argv[2];
+    char *delivered_by = getenv("USER");
+
+  for (int i = 0; i < total_order; i++) {
+     if (strcmp(orders[i].nama, target_name) == 0 && strcmp(orders[i].jenis, "Reguler") == 0) {
+        orders[i].status = true;
+        if (delivered_by != NULL) {
+        strcpy(orders[i].delivered_by, delivered_by);
+        }
+        printf("Delivering %s by %s\n", orders[i].nama, orders[i].delivered_by);
+        write_log(orders[i].delivered_by, orders[i].nama, orders[i].alamat);
+        break;
+     }  
+     else if (strcmp(orders[i].nama, target_name) == 0 && strcmp(orders[i].jenis, "Express") == 0) {
+        printf("Command can't deliver an Express orders.\n");
+        break;
+   }
+ }
+```
+
+**Mengecek Status Pesanan**
+
+Pengecekan status dilakukan dengan memanggil `./dispatcher -status [nama penerima]`. Lalu dilakukan pencocokan dengan `strcmp`, jika `found = true;` maka akan dicek statusnya antara delivered atau pending. Jika `!found` maka nama penerima/target tidak ditemukan.
+
+```c
+if (argc == 3 && strcmp(argv[1], "-status") == 0) {
+    char *target = argv[2];
+    for (int i = 0; i < MAX_ORDERS; i++) {
+      if (strcmp(orders[i].nama, target) == 0) {
+          found = true;
+          if (orders[i].status == true) {
+              printf("Status for %s: Delivered by %s\n", orders[i].nama, orders[i].delivered_by);
+          } else {
+              printf("Status for %s: Pending\n", orders[i].nama);
+          }
+          break;
+      }    
+  } if (!found) {
+    printf("Order in the name of %s not found.\n", target);
+  } 
+```
+
+**e. Melihat Daftar Semua Pesanan**
+
+Untuk mengecek list pengiriman dilakukan dengan memanggil `./dispatcher -list`.  `for (int i = 0; i < MAX_ORDERS; i++)` akan dijalankan untuk menampilkan seluruh list order yang ada. Lalu Baris `if (strlen(orders[i].nama) == 0) continue;` digunakan untuk menghindari entri kosong di array.
+
+```c
+else if (argc == 2 && strcmp(argv[1], "-list") == 0) {
+    printf("Order List:\n");
+    for (int i = 0; i < MAX_ORDERS; i++) {
+        if (strlen(orders[i].nama) == 0) continue; 
+        printf("- %s: %s (%s)\n", orders[i].nama, orders[i].status == 1 ? "Delivered" : "Pending", orders[i].jenis);
+    }    
+```
+
 #### Output
 
 #### Kendala
