@@ -1210,12 +1210,8 @@ void ban_hunter() {
 }
 ```
 
-<<<<<<< HEAD
-J) Menambahkan function untuk fitur unban hunter lalu mereset hunter. Sehingga function ini mengaktifkan kembali hunter yang sebelumnya dilarang (banned), dengan cara mengatur flag banned = 0 pada data hunter di shared memory.
-=======
-J) Menambahkan function untuk fitur unban hunter. Sehingga function ini mengaktifkan kembali hunter yang sebelumnya dilarang (banned), dengan cara mengatur flag banned = 0 pada data hunter di shared memory.
+J) Menambahkan function untuk fitur unban hunter lalu dapat mereset hunter. Sehingga function ini mengaktifkan kembali hunter yang sebelumnya dilarang (banned), dengan cara mengatur flag banned = 0 pada data hunter di shared memory.
 
->>>>>>> refs/remotes/origin/main
 ```c
 void unban_hunter() {
     char user[50];
