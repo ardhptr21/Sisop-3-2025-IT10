@@ -780,6 +780,972 @@ Tidak ada kendala
 
 #### Penjelasan
 
+**Server - dungeon.c & shop.c**
+
+Pertama untuk server adalah membuat socket listener yang ada melakukan listening connection dari client nantinya, yaitu dengan kode sebagai berikut
+
+```c
+int make_socket() {
+    struct sockaddr_in address;
+    int sockfd;
+    socklen_t addrlen = sizeof(address);
+
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) return -1;
+
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_ANY);
+    address.sin_port = htons(PORT);
+
+    int opt = 1;
+    setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    if ((bind(sockfd, (struct sockaddr *)&address, addrlen)) < 0) return -1;
+    if (listen(sockfd, 5) < 0) return -1;
+
+    return sockfd;
+}
+```
+
+Sebelum melanjutkan, disini akan dilakukan setup untuk beberapa `struct` dan beberapa value `enum` dari simulasi game ini, dan beberapa struct ini dipecah kedalam dua file yaitu ada di file `dungeon.c` dan `shop.c`
+
+_shop.c_
+
+```c
+
+enum WeaponPassive {
+    NONE,
+    CRITICAL,
+    INSTANTKILL,
+};
+
+const char *WeaponPassiveStr[] = {
+    "NONE",
+    "Critical",
+    "Instant Kill",
+};
+
+struct Weapon {
+    char *name;
+    int price;
+    int damage;
+
+    int hasPassive;
+    int passivePercentage;
+    enum WeaponPassive passiveType;
+};
+
+struct Inventory {
+    struct Weapon *weapons;
+    int capacity;
+    int size;
+};
+
+struct Player {
+    int gold;
+    int kills;
+
+    struct Inventory inventory;
+    int equippedWeapon;
+};
+```
+
+_dungeon.c_
+
+```c
+struct Enemy {
+    int baseHealth;
+    int currentHealth;
+};
+
+struct AttackStats {
+    int damage;
+    int reward;
+    int isCritical;
+    int isPassive;
+    int isDead;
+
+    const char *passive;
+    const char *passiveDetail;
+};
+```
+
+Setelah itu adalah membuat default weapons yang ada atau available yaitu sebagai berikut ini
+
+```c
+struct Weapon weapons[5] = {
+    {"Terra Blade", 50, 10, 0, 0, NONE},
+    {"Flint & Steel", 150, 25, 0, 0, NONE},
+    {"Kitchen Knife", 200, 35, 0, 0, NONE},
+    {"Staff of Light", 120, 20, 1, 10, CRITICAL},
+    {"Terra Blade", 50, 10, 1, 30, INSTANTKILL},
+};
+```
+
+Jadi akan ada 5 default weapons yang tersedia di `shop` sesuai dengan instruksi soal. Selanjutnya adalah membuat handler untuk setiap action yang akan diberikan oleh client
+
+```c
+void handler(int sock) {
+    struct Weapon defaultWeapon = {"Fists", 0, 5, 0, 0, NONE};
+
+    struct Inventory inventory = {NULL, 5, 0};
+    inventory.weapons = malloc(sizeof(struct Weapon) * inventory.capacity);
+    if (inventory.weapons == NULL) return;
+    inventory.weapons[inventory.size++] = defaultWeapon;
+
+    struct Player player = {500, 0, inventory, 0};
+
+    char buffer[1024];
+    int buflen;
+    while (1) {
+        buflen = recv(sock, buffer, sizeof(buffer), 0);
+        if (buflen <= 0) continue;
+        buffer[buflen - 1] = '\0';
+        if (strcmp(buffer, "exit") == 0) break;
+        if (strcmp(buffer, "stats") == 0) {
+            if (get_stats(sock, &player) < 0) continue;
+        }
+        if (strcmp(buffer, "inventory") == 0) {
+            if (get_inventory(sock, &player) < 0) continue;
+        }
+        if (strcmp(buffer, "change") == 0) {
+            if (change_weapon(sock, &player) < 0) continue;
+        }
+        if (strcmp(buffer, "weapons") == 0) {
+            if (available_weapons(sock) < 0) continue;
+        }
+        if (strcmp(buffer, "buy") == 0) {
+            if (buy_weapon(sock, &player) < 0) continue;
+        }
+        if (strcmp(buffer, "battle") == 0) {
+            battle(sock, &player);
+            continue;
+        }
+    }
+
+    free(inventory.weapons);
+}
+```
+
+Jadi handler ini akan melakukan while loop untuk menerima action input dari user, dan melakukan defaulting value untuk beberapa hal, seperti default weapon, default inventory. Setelah itu pada while loop akan memanggil masing - masing handler sesuai dengan action input dari client tersebut.
+
+Pertama adalah untuk memeriksa `current stats` dari playernya, dan sebagai berikut adalah handler function yang digunakan
+
+```c
+int get_stats(int sock, struct Player *player) {
+    char buffer[1024];
+    snprintf(buffer, sizeof(buffer),
+             "Gold=%d;Equipped Weapon=%s;Base Damage=%d;Kills=%d;Passive=%s;Passive Value=%d\n",
+             player->gold,
+             player->inventory.weapons[player->equippedWeapon].name,
+             player->inventory.weapons[player->equippedWeapon].damage,
+             player->kills,
+             WeaponPassiveStr[player->inventory.weapons[player->equippedWeapon].passiveType],
+             player->inventory.weapons[player->equippedWeapon].passivePercentage);
+    int len = strlen(buffer);
+    if (send(sock, buffer, len, 0) != len) return -1;
+}
+```
+
+Jadi handler function diatas akan mengirimkan value - value dari object player yang kemudian dikirimkan sebagai string ke client, dengan format - format tertentu seperti yang dapat dilihat pada kode diatas.
+
+Selanjutnya adalah handler untuk `inventory` yaitu sebagai berikut ini
+
+```c
+int get_inventory(int sock, struct Player *player) {
+    char buffer[1024];
+    int len = 0;
+    for (int i = 0; i < player->inventory.size; i++) {
+        struct Weapon *weapon = &player->inventory.weapons[i];
+        len += snprintf(buffer + len, sizeof(buffer) - len,
+                        "Name=%s:Passive=%s:Equipped=%d:Passive Value=%d;",
+                        weapon->name,
+                        WeaponPassiveStr[weapon->passiveType],
+                        (player->equippedWeapon == i ? 1 : 0),
+                        weapon->passivePercentage);
+    }
+    buffer[len - 1] = '\0';
+
+    if (send(sock, buffer, len, 0) != len) return -1;
+    return 0;
+}
+```
+
+Pada get inventory ini seperti biasa maka akan menampilkan inventory dari object player saat ini dan mengirimkannya sesuai dengan format ke client.
+
+Selanjutnya adalah handler untuk melakukan `change` weaponnya, yaitu sebagai berikut ini
+
+```c
+int change_weapon(int sock, struct Player *player) {
+    char buffer[128];
+    int len = recv(sock, buffer, sizeof(buffer), 0);
+    if (len <= 0) return -1;
+    buffer[len - 1] = '\0';
+    int index = atoi(buffer);
+
+    if (index < 0 || index >= player->inventory.size) {
+        snprintf(buffer, sizeof(buffer), "Invalid weapon index\n");
+        send(sock, buffer, strlen(buffer), 0);
+        return -1;
+    }
+
+    player->equippedWeapon = index;
+}
+```
+
+Change weapon ini sangat simple sekali, hanya melakukan recv value dari client berupa sebuah index, yang kemudian index tersebut akan disimpan sebagai penunjuk ke inventory weapon dari playernya.
+
+Oke next adalah handler untuk menampilkan `available weapons` yang ada dishop, dan function ini diletakkan pada file `shop.c`, dan sebagai berikut
+
+```c
+int available_weapons(int sock) {
+    char buffer[1024];
+    int len = 0;
+    int size = sizeof(weapons) / sizeof(weapons[0]);
+    for (int i = 0; i < size; i++) {
+        struct Weapon *weapon = &weapons[i];
+        len += snprintf(buffer + len, sizeof(buffer) - len,
+                        "Name=%s:Price=%d:Damage=%d:Passive=%s:Passive Value=%d;",
+                        weapon->name,
+                        weapon->price,
+                        weapon->damage,
+                        WeaponPassiveStr[weapon->passiveType],
+                        weapon->passivePercentage);
+    }
+    buffer[len - 1] = '\0';
+
+    if (send(sock, buffer, len, 0) != len) return -1;
+    return 0;
+}
+```
+
+Sangat strightforward untuk mengirimkan semua available weapons ke client sesuai format.
+
+Next adalah untuk `buy weapon` handlernya sebagai berikut
+
+```c
+int buy_weapon(int sock, struct Player *player) {
+    char buffer[128];
+    int len = recv(sock, buffer, sizeof(buffer), 0);
+    if (len <= 0) return -1;
+    buffer[len - 1] = '\0';
+
+    int weaponIndex = atoi(buffer);
+    if (weaponIndex < 0 || weaponIndex >= sizeof(weapons) / sizeof(weapons[0])) return -1;
+
+    struct Weapon *weapon = &weapons[weaponIndex];
+    if (player->gold < weapon->price) {
+        snprintf(buffer, sizeof(buffer), "Not enough gold\n");
+        send(sock, buffer, strlen(buffer), 0);
+        return -1;
+    }
+    player->gold -= weapon->price;
+    player->inventory.weapons[player->inventory.size++] = *weapon;
+}
+```
+
+Function handler ini akan menerima input dari client yang berupa index dari setiap weapons yang ada dishop, lalu kemudian akan mencocokkan indexnya dan mengurangkan gold dari player tersebut, dan menambahkannya ke inventory.
+
+Dan next, terakhir adalah logic handler untuk melakukan battle
+
+```c
+void battle(int sock, struct Player *player) {
+    char buffer[1024];
+    int buflen;
+
+    struct Enemy enemy;
+    int enemyHealth;
+    random_enemy(sock, &enemyHealth);
+    enemy.baseHealth = enemyHealth;
+    enemy.currentHealth = enemyHealth;
+
+    while (1) {
+        buflen = recv(sock, buffer, sizeof(buffer), 0);
+        if (buflen <= 0) continue;
+        buffer[buflen - 1] = '\0';
+
+        if (strcmp(buffer, "exit") == 0) break;
+        if (strcmp(buffer, "attack") == 0) {
+            attack(sock, player, &enemy);
+        }
+    }
+}
+```
+
+Function handler `battle` ini adalah sebagai pintu awal untuk melakukan battle, seperti melakukan setting enemy, dan menerima sub-action ketika sudah memasukki `mode battle` tersebut, dan setelah itu akan memanggil function `attack` ketika menerima input attack, dan exit ketika menerima input exit.
+
+```c
+int attack(int sock, struct Player *player, struct Enemy *enemy) {
+    srand(time(NULL));
+    struct AttackStats attackStats = {0, 0, 0, 0, 0, NULL, NULL};
+    struct Weapon *weapon = &player->inventory.weapons[player->equippedWeapon];
+    int baseDamage = weapon->damage;
+
+    attackStats.damage = baseDamage;
+
+    // 45% chance for critical hit
+    attackStats.isCritical = (rand() % 100) <= 45;
+    // 20% chance for passive
+    attackStats.isPassive = (rand() % 100) <= 20;
+
+    if (attackStats.isPassive && weapon->hasPassive) {
+        attackStats.passive = WeaponPassiveStr[weapon->passiveType];
+        if (weapon->passiveType == CRITICAL) {
+            if (!attackStats.isCritical) {
+                attackStats.isCritical = (rand() % 100) <= weapon->passivePercentage + 45;
+            }
+            if (attackStats.isCritical) {
+                attackStats.passiveDetail = "Critical Passive active! You hit the enemy with a more critical hit chance!";
+            } else {
+                attackStats.passiveDetail = "Critical Passive active! Oh no, you missed, the chance is not in your favor!";
+            }
+        } else if (weapon->passiveType == INSTANTKILL) {
+            if (rand() % 100 <= weapon->passivePercentage) {
+                enemy->currentHealth = 0;
+                attackStats.passiveDetail = "Instant Kill Passive active! You killed the enemy instantly, no damage taken!";
+                attackStats.damage = 0;
+            } else {
+                attackStats.damage += (attackStats.damage * weapon->passivePercentage) / 100;
+                attackStats.passiveDetail = "Instant Kill Passive active! but not your lucky day, but your damage is increased!";
+            }
+        }
+    } else {
+        attackStats.isPassive = 0;
+    }
+
+    if (attackStats.isCritical) {
+        attackStats.damage *= 2;
+    }
+
+    enemy->currentHealth -= attackStats.damage;
+    player->gold += attackStats.reward;
+
+    if (enemy->currentHealth <= 0) {
+        attackStats.reward = random_reward();
+        attackStats.isDead = 1;
+
+        player->gold += attackStats.reward;
+        enemy->currentHealth = 0;
+        player->kills++;
+    }
+
+    char buffer[1024];
+
+    snprintf(buffer, sizeof(buffer), "BaseHealth=%d;CurrHealth=%d;Reward=%d;Damage=%d;IsDead=%d;IsCritical=%d;IsPassive=%d;Passive=%s;PassiveDetail=%s\n",
+             enemy->baseHealth,
+             enemy->currentHealth,
+             attackStats.reward,
+             attackStats.damage,
+             attackStats.isDead,
+             attackStats.isCritical,
+             attackStats.isPassive,
+             attackStats.passive == NULL ? "NONE" : attackStats.passive,
+             attackStats.passiveDetail == NULL ? "NONE" : attackStats.passiveDetail);
+
+    int len = strlen(buffer);
+    if (send(sock, buffer, len, 0) != len) return -1;
+    sleep(0.01);
+    if (attackStats.isDead) {
+        int newHealth;
+        random_enemy(sock, &newHealth);
+        enemy->baseHealth = newHealth;
+        enemy->currentHealth = newHealth;
+    };
+    return 0;
+}
+```
+
+Kemudian logic dari attack akan memiliki isi yaitu sebagai logika untuk melawan enemy atau damage, mendapatkan reward, critial hit, passive, dll.
+Disini passive nya akan aktif sesuai dengan kondisi chance passive tersebut masing - masing. Selanjutnya akan ada beberapa function tambahan yaitu sebagai berikut
+
+```c
+int random_enemy(int sock, int *enemyHealth) {
+    srand(time(NULL));
+    int randomValue = (rand() % 151) + 50;
+
+    *enemyHealth = randomValue;
+    char buffer[128];
+    snprintf(buffer, sizeof(buffer), "Health=%d", randomValue);
+    int len = strlen(buffer);
+    if (send(sock, buffer, len, 0) != len) return -1;
+}
+
+int random_reward() {
+    srand(time(NULL));
+    int randomValue = (rand() % 81) + 20;
+    return randomValue;
+}
+```
+
+dua function tersebut digunakan untuk melakukan randomize beberapa value, seperti health dari enemy dan reward gold untuk playernya.
+
+Setelah semua define function selesai, berikut adalah implementasi dari `main` functionnya
+
+```c
+int main(int argc, char *argv[]) {
+    struct sigaction sa;
+    sa.sa_handler = reap_zombies;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    sigaction(SIGCHLD, &sa, NULL);
+
+    int sockfd = make_socket();
+    if (sockfd < 0) {
+        perror("socket setup failed");
+        exit(EXIT_FAILURE);
+    }
+
+    struct sockaddr_in client_addr;
+    socklen_t addr_len = sizeof(client_addr);
+
+    while (1) {
+        int client_sock = accept(sockfd, (struct sockaddr *)&client_addr, &addr_len);
+        if (client_sock < 0) continue;
+
+        pid_t pid = fork();
+        if (pid < 0) {
+            close(client_sock);
+            continue;
+        } else if (pid == 0) {
+            close(sockfd);
+            handler(client_sock);
+            close(client_sock);
+            exit(0);
+        } else {
+            close(client_sock);
+        }
+    }
+
+    close(sockfd);
+
+    return 0;
+}
+```
+
+Pada main function tersebut akan melakukan logic untuk bisa menerima multi-player connection, lalu melakukan handling signal - signal untuk bisa langsung mematikan process ketika client melakukan close connection, dan berikut function tambahannya
+
+```c
+void reap_zombies(int sig) {
+    while (waitpid(-1, NULL, WNOHANG) > 0);
+}
+```
+
+**Client - player.c**
+
+Untuk player pertama adalah membuat socket connection yang akan terhubung ke server yaitu sebagai berikut
+
+```c
+int connect_socket() {
+    int sockfd;
+    struct sockaddr_in address;
+
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) return -1;
+
+    address.sin_family = AF_INET;
+    address.sin_port = htons(PORT);
+    address.sin_addr.s_addr = inet_addr(HOST);
+
+    if (connect(sockfd, (struct sockaddr *)&address, sizeof(address)) < 0) return -1;
+
+    return sockfd;
+}
+```
+
+Selanjutnya adalah untuk menampilkan menu dan menerima input option dari user
+
+```c
+int main_menu() {
+    int opt;
+    printf("\e[34m==== MAIN MENU ====\e[0m\n");
+    printf("1. Show Player Stats\n");
+    printf("2. Shop (Buy Weapons)\n");
+    printf("3. View Inventory & Equip Weapons\n");
+    printf("4. Battle Mode\n");
+    printf("5. Exit Game\n");
+    printf("\e[33mChoose an option: \e[0m");
+    scanf("%d", &opt);
+    cleanline();
+    return opt;
+}
+```
+
+Terdapat helper function yaitu `cleanline`, yang fungsinya sebagai cleaner newline ketika user menginputkan hal lain selain angka pada menu tersebut
+
+```c
+void cleanline() {
+    while (getchar() != '\n');
+}
+```
+
+Dan selanjutnya tentu membuat sebuah handler untuk masing - masing option yang dipilih oleh user nantinya
+
+```c
+void handler(int sockfd, int opt) {
+    switch (opt) {
+        case 1:
+            get_stats(sockfd);
+            break;
+        case 2:
+            get_weapons(sockfd);
+            break;
+        case 3:
+            get_inventory(sockfd);
+            break;
+        case 4:
+            battle(sockfd);
+            break;
+        default:
+            printf("\e[31mInvalid option. Please try again.\e[0m\n");
+    }
+    printf("\n");
+}
+```
+
+Handler tersebut akan memanggil option sesuai dengan handler functionnya masing - masing.
+
+Pertama untuk `get_stats` yaitu sebagai berikut
+
+```c
+int get_stats(int sockfd) {
+    char buffer[1024];
+
+    char *action = "stats\n";
+    int len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return -1;
+
+    int buflen = recv(sockfd, buffer, sizeof(buffer), 0);
+    if (buflen <= 0) return -1;
+    buffer[buflen - 1] = '\0';
+
+    printf("==== PLAYER STATS ====\n");
+
+    char *token = strtok(buffer, ";");
+    int hasPassive = 0, passiveValue = 0;
+    char *passive = NULL;
+
+    while (token != NULL) {
+        char *sep = strchr(token, '=');
+        if (!sep) continue;
+        *sep = '\0';
+        char *key = token;
+        char *value = sep + 1;
+        if (strcmp(key, "Gold") == 0) {
+            printf("| \e[33m%s\e[0m: %s | ", key, value);
+        } else if (strcmp(key, "Equipped Weapon") == 0) {
+            printf("\e[32m%s\e[0m: %s | ", key, value);
+        } else if (strcmp(key, "Base Damage") == 0) {
+            printf("\e[31m%s\e[0m: %s | ", key, value);
+        } else if (strcmp(key, "Kills") == 0) {
+            printf("\e[34m%s\e[0m: %s | ", key, value);
+        } else if (strcmp(key, "Passive") == 0) {
+            if (strcmp(value, "NONE") != 0) {
+                passive = value;
+                hasPassive = 1;
+            };
+        } else if (strcmp(key, "Passive Value") == 0) {
+            passiveValue = atoi(value);
+        }
+
+        token = strtok(NULL, ";");
+    }
+    if (hasPassive) {
+        printf("\e[35mPassive\e[0m: Increased %s Chance (%d%%) | ", passive, passiveValue);
+    }
+    printf("\n");
+}
+```
+
+Mengirimkan stats action ke server, kemudian membaca response dari server dan melakukan ekstraksi dari format yang dikirim dari server yang kemudian langsung ditampilkan ke console.
+
+Selanjutnya adalah handler untuk `get_weapons`
+
+```c
+int display_weapon(char *buffer, int pos) {
+    int price = 0, damage = 0, hasPassive = 0, passiveValue = 0;
+    char *name = NULL, *passive = NULL;
+
+    char *start = buffer;
+    while (*start) {
+        char *end = strchr(start, ':');
+        if (end) *end = '\0';
+
+        char *sep = strchr(start, '=');
+        if (sep) {
+            *sep = '\0';
+            char *key = start;
+            char *value = sep + 1;
+
+            if (strcmp(key, "Name") == 0) {
+                name = value;
+            } else if (strcmp(key, "Price") == 0) {
+                price = atoi(value);
+            } else if (strcmp(key, "Damage") == 0) {
+                damage = atoi(value);
+            } else if (strcmp(key, "Passive") == 0) {
+                if (strcmp(value, "NONE") != 0) {
+                    passive = value;
+                    hasPassive = 1;
+                }
+            } else if (strcmp(key, "Passive Value") == 0) {
+                passiveValue = atoi(value);
+            }
+        }
+        if (end)
+            start = end + 1;
+        else
+            break;
+    }
+
+    if (hasPassive) {
+        printf("\e[32m[%d] %s\e[0m - Price: \e[33m%d gold\e[0m, Damage: \e[31m%d\e[0m \e[35m(Passive: %d%% %s)\e[0m\n", pos, name, price, damage, passiveValue, passive);
+    } else {
+        printf("\e[32m[%d] %s\e[0m - Price: \e[33m%d gold\e[0m, Damage: \e[31m%d\e[0m\n", pos, name, price, damage);
+    }
+
+    return 0;
+}
+
+int get_weapons(int sockfd) {
+    char buffer[1024];
+
+    char *action = "weapons\n";
+    int len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return -1;
+
+    int buflen = recv(sockfd, buffer, sizeof(buffer), 0);
+    if (buflen <= 0) return -1;
+    buffer[buflen - 1] = '\0';
+
+    printf("==== WEAPONS SHOP ====\n");
+
+    char *token = strtok(buffer, ";");
+    int pos = 1;
+    while (token != NULL) {
+        display_weapon(token, pos++);
+        token = strtok(NULL, ";");
+    }
+    printf("\n");
+    buy_weapon(sockfd, pos - 1);
+}
+
+int buy_weapon(int sockfd, int available) {
+    int opt;
+    printf("Enter weapon number to buy [1-%d] (0 to cancel): ", available);
+    scanf("%d", &opt);
+    cleanline();
+
+    if (opt < 0 || opt > available) {
+        printf("Invalid option. Please try again.\n");
+        return buy_weapon(sockfd, available);
+    }
+
+    if (opt == 0) return 0;
+
+    opt -= 1;
+
+    char action[32];
+    int len;
+
+    snprintf(action, sizeof(action), "buy\n");
+    len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return -1;
+    sleep(0.01);
+    snprintf(action, sizeof(action), "%d\n", opt);
+    len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return -1;
+}
+```
+
+Handler `get_weapons` akan memanggil sub function yaitu `display_weapon` dan `buy_weapon`, dimana fungsi utamanya adalah untuk mengirim request action `weapons` ke server untuk mendapatkan semua list weaponnya, dan kemudian menampilkan responnya ke console, dan lalu kemudian memanggil function `display_weapon` untuk setiap weaponnya, dan memanggil function `buy_weapon` diakhir untuk bisa menampilkan console untuk membeli sebuah weapon.
+
+Selanjutnya adalah untuk `get_inventory` yaitu akan memanggil sub function `display_inventory` dan `change_weapon`
+
+```c
+
+void display_inventory(char *buffer, int pos) {
+    int isEquipped = 0, hasPassive = 0, passiveValue = 0;
+    char *name = NULL, *passive = NULL;
+
+    char *start = buffer;
+    while (*start) {
+        char *end = strchr(start, ':');
+        if (end) *end = '\0';
+
+        char *sep = strchr(start, '=');
+        if (sep) {
+            *sep = '\0';
+            char *key = start;
+            char *value = sep + 1;
+
+            if (strcmp(key, "Name") == 0) {
+                name = value;
+            } else if (strcmp(key, "Equipped") == 0) {
+                isEquipped = atoi(value);
+            } else if (strcmp(key, "Passive") == 0) {
+                if (strcmp(value, "NONE") != 0) {
+                    passive = value;
+                    hasPassive = 1;
+                }
+            } else if (strcmp(key, "Passive Value") == 0) {
+                passiveValue = atoi(value);
+            }
+        }
+
+        if (end)
+            start = end + 1;
+        else
+            break;
+    }
+
+    if (isEquipped) {
+        if (hasPassive) {
+            printf("\e[32m[%d] %s\e[0m \e[35m(Passive: %d%% %s)\e[0m \e[33m(EQUIPPED)\e[0m\n", pos, name, passiveValue, passive);
+        } else {
+            printf("\e[32m[%d] %s\e[0m \e[33m(EQUIPPED)\e[0m\n", pos, name);
+        }
+    } else {
+        if (hasPassive) {
+            printf("[%d] %s (Passive: %d%% %s)\n", pos, name, passiveValue, passive);
+        } else {
+            printf("[%d] %s\n", pos, name);
+        }
+    }
+}
+int get_inventory(int sockfd) {
+    char buffer[1024];
+
+    char *action = "inventory\n";
+    int len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return -1;
+
+    int buflen = recv(sockfd, buffer, sizeof(buffer), 0);
+    if (buflen <= 0) return -1;
+    buffer[buflen - 1] = '\0';
+
+    printf("==== YOUR INVENTORY ====\n");
+
+    char *token = strtok(buffer, ";");
+    int pos = 1;
+    while (token != NULL) {
+        display_inventory(token, pos++);
+        token = strtok(NULL, ";");
+    }
+    printf("\n");
+
+    change_weapon(sockfd, pos - 1);
+}
+
+int change_weapon(int sockfd, int available) {
+    int opt;
+    printf("Enter weapon number to change [1-%d] (0 to cancel): ", available);
+    scanf("%d", &opt);
+    cleanline();
+
+    if (opt < 0 || opt > available) {
+        printf("Invalid option. Please try again.\n");
+        return change_weapon(sockfd, available);
+    }
+
+    if (opt == 0) return 0;
+
+    opt -= 1;
+
+    char action[32];
+    int len;
+
+    snprintf(action, sizeof(action), "change\n");
+    len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return -1;
+    sleep(0.01);
+    snprintf(action, sizeof(action), "%d\n", opt);
+    len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return -1;
+}
+```
+
+Akan mengirimkan request action yaitu `inventory` dan kemudian menampilkan semua inventory, dan memanggil `display_inventory` untuk menampilkan setiap satuan inventorynya, dan memanggil function `change_weapon` untuk menampilkan input ke user dan kemudian mengirimkan action change ke server untuk mengganti senjata.
+
+Dan yang terakhir adalah handler untuk `battle` yaitu sebagai berikut ini
+
+```c
+void battle(int sockfd) {
+    char buffer[1024];
+    char input[64];
+
+    printf("\e[31m==== BATTLE STARTED ====\e[0m\n\n");
+
+    char *action = "battle\n";
+    int len = strlen(action);
+    if (send(sockfd, action, len, 0) != len) return;
+
+    recv_enemy(sockfd, 0);
+    printf("Type \e[32m'attack'\e[0m to attack or \e[31m'exit'\e[0m to leave battle\n");
+    while (1) {
+        printf("> ");
+        scanf("%s", input);
+
+        if (strcmp(input, "exit") == 0) {
+            char *action = "exit\n";
+            int len = strlen(action);
+            if (send(sockfd, action, len, 0) != len) return;
+            break;
+        }
+
+        if (strcmp(input, "attack") != 0) {
+            printf("Invalid command. Type \e[32m'attack'\e[0m to attack or \e[31m'exit'\e[0m to leave battle.\n\n");
+            continue;
+        }
+
+        char *action = "attack\n";
+        int len = strlen(action);
+        if (send(sockfd, action, len, 0) != len) return;
+
+        int buflen = recv(sockfd, buffer, sizeof(buffer), 0);
+        if (buflen <= 0) return;
+        buffer[buflen - 1] = '\0';
+
+        recv_attack(sockfd, buffer);
+    }
+}
+```
+
+Ini merupakan pintu pertaama untuk memasukki mode battle, dan akan mengirimkan action `battle` ke server, dan kemudian akan menjadi interactive untuk user bisa menginputkan sebuah perintah dimana perintah ini juga akan dikirimkan ke server. Pertama function ini akan memanggil function `recv_enemy`
+
+```c
+int recv_enemy(int sockfd, int should_new) {
+    char buffer[128];
+
+    int buflen = recv(sockfd, buffer, sizeof(buffer), 0);
+    if (buflen <= 0) return -1;
+    buffer[buflen] = '\0';
+    char *sep = strchr(buffer, '=');
+    if (!sep) return -1;
+    *sep = '\0';
+    char *key = buffer;
+    char *value = sep + 1;
+    int value_int = atoi(value);
+
+    if (should_new) {
+        printf("\e[34m==== NEW ENEMY ====\e[0m\n");
+    } else {
+        printf("Enemy appeared with:\n");
+    }
+
+    health_bar(value_int, value_int);
+    printf("\n");
+    return 0;
+}
+```
+
+Function tersebut digunakan untuk menampilkan dan menerima sebuah enemy baru yang dikirim dari server.
+Lalu terdapat function `recv_attack`
+
+```c
+int recv_attack(int sockfd, char *buffer) {
+    char *token = strtok(buffer, ";");
+    int baseHealth = 0, currHealth = 0, reward = 0, damage = 0, isDead = 0, isCritical = 0, isPassive = 0;
+    char *passive = NULL, *passiveDetail = NULL;
+
+    while (token != NULL) {
+        char *sep = strchr(token, '=');
+        if (!sep) continue;
+        *sep = '\0';
+        char *key = token;
+        char *value = sep + 1;
+
+        if (strcmp(key, "BaseHealth") == 0) {
+            baseHealth = atoi(value);
+        } else if (strcmp(key, "CurrHealth") == 0) {
+            currHealth = atoi(value);
+        } else if (strcmp(key, "Reward") == 0) {
+            reward = atoi(value);
+        } else if (strcmp(key, "Damage") == 0) {
+            damage = atoi(value);
+        } else if (strcmp(key, "IsDead") == 0) {
+            isDead = atoi(value);
+        } else if (strcmp(key, "IsCritical") == 0) {
+            isCritical = atoi(value);
+        } else if (strcmp(key, "IsPassive") == 0) {
+            isPassive = atoi(value);
+        } else if (strcmp(key, "Passive") == 0) {
+            passive = value;
+        } else if (strcmp(key, "PassiveDetail") == 0) {
+            passiveDetail = value;
+        }
+        token = strtok(NULL, ";");
+    }
+
+    if (isPassive) {
+        printf("\e[35m==== PASSIVE ACTIVE: %s ====\e[0m\n", passive);
+        printf("%s\n\n", passiveDetail);
+    }
+
+    if (isCritical) {
+        printf("\e[33m==== CRITICAL HIT! ====\e[0m\n");
+    }
+
+    if (isDead) {
+        if (damage > 0) {
+            printf("You dealt \e[31m%d damage\e[0m and defeated the enemy!\n\n", damage);
+        } else {
+            printf("You dealt \e[31m∞ damage\e[0m and defeated the enemy!\n\n");
+        }
+        printf("\e[35m==== REWARD ====\e[0m\n");
+        printf("You earned \e[33m%d gold\e[0m!\n\n", reward);
+        recv_enemy(sockfd, 1);
+        return 0;
+    }
+
+    printf("You dealt \e[31m%d\e[0m damage!\n\n", damage);
+
+    printf("\e[34m==== ENEMY STATUS ====\e[0m\n");
+    health_bar(currHealth, baseHealth);
+}
+```
+
+function diatas digunakan untuk mengambil hasil attack yang telah dikirimkan ke server, akan menampilkan semua statistic attack yang terjadi diserver yang dikirim ke client. Lalu ada function `health_bar` untuk menampilkan health_bar dari enemy
+
+```c
+void health_bar(int min, int max) {
+    int barLength = 50;
+    int healthUnits = (min * barLength) / max;
+
+    printf("[");
+    for (int i = 0; i < barLength; i++) {
+        if (i < healthUnits) {
+            printf("\e[42m \e[0m");
+        } else {
+            printf("\e[107m \e[0m");
+        }
+    }
+    printf("] %d/%d HP\n\n", min, max);
+}
+```
+
+Dan terakhir adalah menggabungkan semua hal tersebut menjadi satu di `main` functionnya yaitu sebagai berikut ini
+
+```c
+int main(int argc, char *argv[]) {
+    int sockfd = connect_socket();
+
+    if (sockfd < 0) {
+        perror("connection failed");
+        exit(EXIT_FAILURE);
+    }
+
+    int opt;
+    while (1) {
+        opt = main_menu();
+        if (opt == 5) break;
+        handler(sockfd, opt);
+    }
+    close(sockfd);
+    return 0;
+}
+```
+
+di `main` function tersebut akan melakukan while loop untuk bisa terus mengulang menampilkan menu - menu yang ada.
+Dan untuk error handling bisa dilihat disetiap implementasi function yang memiliki sudah melakukan error handlingnya masing - masing.
+
 #### Output
 
 1. Client connected ke server dan main menu
