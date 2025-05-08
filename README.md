@@ -842,7 +842,16 @@ else if (argc == 2 && strcmp(argv[1], "-list") == 0) {
 
 3. Melakukan pengiriman reguler
 
+![alt text](assets/soal_2/deliver.png)
+![alt text](assets/soal_2/output_reguler_order.png)
 
+4. Mengecek status pesanan
+
+![alt text](assets/soal_2/status.png)
+
+5. Melihat list pesanan
+
+![alt text](assets/soal_2/list.png)   
    
 
 #### Kendala
